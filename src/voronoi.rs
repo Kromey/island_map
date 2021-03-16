@@ -32,6 +32,20 @@ impl Voronoi {
         vor
     }
 
+    pub fn improve_centers(&mut self) {
+        let mut centers = Vec::new();
+        for points in self.cell_membership.iter() {
+            let acc = (0, (0, 0));
+            let (count, sum) = points.iter().fold(acc, |acc, p| (acc.0 + 1, (acc.1.0 + p.0, acc.1.1 + p.1)));
+            let new_x = sum.0 as f32 / count as f32;
+            let new_y = sum.1 as f32 / count as f32;
+            centers.push((new_x.round() as u32, new_y.round() as u32));
+        }
+
+        self.centers = centers;
+        self.calc_membership();
+    }
+
     fn calc_membership(&mut self) {
         let mut membership = vec![Vec::<(u32, u32)>::new(); self.centers.len()];
         for x in 0..self.width as i32 {

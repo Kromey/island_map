@@ -5,14 +5,7 @@ use image;
 mod voronoi;
 use voronoi::Voronoi;
 
-fn main() {
-    let imgx = 400;
-    let imgy = 400;
-
-    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
-
-    let v = Voronoi::new(&mut rng, 256, imgx, imgy);
-
+fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize) {
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
     let colors = [
         image::Rgb([0u8,0u8,0u8]),
@@ -49,7 +42,7 @@ fn main() {
         image::Rgb([138u8,111u8,48u8]),
     ];
 
-    for (points, &color) in v.cell_membership.iter().zip(colors.iter().cycle()) {
+    for (points, &color) in vor.cell_membership.iter().zip(colors.iter().cycle()) {
 
         for (x, y) in points.iter() {
             let pixel = img.get_pixel_mut(*x, *y);
@@ -57,5 +50,20 @@ fn main() {
         }
     }
 
-    img.save("map.png").unwrap();
+    img.save(format!("map_{:02}.png", i)).unwrap();
+}
+
+fn main() {
+    let imgx = 400;
+    let imgy = 400;
+
+    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
+
+    let mut v = Voronoi::new(&mut rng, 256, imgx, imgy);
+    draw_voronoi(&v, imgx, imgy, 1);
+
+    for i in 0..2 {
+        v.improve_centers();
+        draw_voronoi(&v, imgx, imgy, i+2);
+    }
 }
