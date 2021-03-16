@@ -1,32 +1,17 @@
 use rand::prelude::*;
-use rand::distributions::{Distribution, Uniform};
 use rand_xoshiro::Xoshiro256StarStar;
 use image;
-use imageproc::drawing::draw_filled_circle;
+
+mod voronoi;
+use voronoi::Voronoi;
 
 fn main() {
-    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
-    let distribution = Uniform::from(0..400);
-
-    let mut centers: Vec<(u32, u32)> = Vec::new();
-    while centers.len() < 256 {
-        let point = (distribution.sample(&mut rng), distribution.sample(&mut rng));
-        if !centers.contains(&point) {
-            centers.push(point);
-        }
-    }
-
     let imgx = 400;
     let imgy = 400;
 
-    let mut membership = vec![Vec::<(u32, u32)>::new(); centers.len()];
-    for x in 0..imgx {
-        for y in 0..imgy {
-            let (idx, _) = centers.iter().enumerate().min_by_key(|point| (point.1.0 as i32 - x).pow(2) + (point.1.1 as i32 - y).pow(2)).unwrap();
+    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
 
-            membership[idx].push((x as u32, y as u32));
-        }
-    }
+    let v = Voronoi::new(&mut rng, 256, imgx, imgy);
 
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
     let colors = [
@@ -64,11 +49,11 @@ fn main() {
         image::Rgb([138u8,111u8,48u8]),
     ];
 
-    for (points, color) in membership.iter().zip(colors.iter().cycle()) {
+    for (points, &color) in v.cell_membership.iter().zip(colors.iter().cycle()) {
 
         for (x, y) in points.iter() {
             let pixel = img.get_pixel_mut(*x, *y);
-            *pixel = *color;
+            *pixel = color;
         }
     }
 
