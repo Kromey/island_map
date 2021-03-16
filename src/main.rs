@@ -29,7 +29,7 @@ fn main() {
     }
 
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
-    let mut colors = [
+    let colors = [
         image::Rgb([0u8,0u8,0u8]),
         image::Rgb([34u8,32u8,52u8]),
         image::Rgb([69u8,40u8,60u8]),
@@ -62,10 +62,9 @@ fn main() {
         image::Rgb([215u8,123u8,186u8]),
         image::Rgb([143u8,151u8,74u8]),
         image::Rgb([138u8,111u8,48u8]),
-    ].iter().cycle();
+    ];
 
-    for points in membership.iter() {
-        let color = colors.next().unwrap();
+    for (points, color) in membership.iter().zip(colors.iter().cycle()) {
 
         for (x, y) in points.iter() {
             let pixel = img.get_pixel_mut(*x, *y);
