@@ -6,6 +6,7 @@ pub struct Voronoi {
     pub height: u32,
     pub centers: Vec<(u32, u32)>,
     pub cell_membership: Vec<Vec<(u32, u32)>>,
+    pub is_water: Vec<bool>,
 }
 
 impl Voronoi {
@@ -26,6 +27,7 @@ impl Voronoi {
             height,
             centers,
             cell_membership: Vec::new(),
+            is_water: vec![true; cells],
         };
         vor.calc_membership();
 
