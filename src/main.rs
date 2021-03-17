@@ -105,6 +105,14 @@ fn main() {
 
             v.is_water[idx] = n + d > 0.5;
         }
+        for (idx, points) in v.cell_membership.iter().enumerate() {
+            if v.is_water[idx] {
+                continue;
+            }
+            if points.iter().any(|&point| point.0 <= 5 || point.1 <= 5 || point.0 >= imgx - 6 || point.1 >= imgy - 6) {
+                v.is_water[idx] = true;
+            }
+        }
         let duration = Instant::now() - start;
         map_duration += duration;
         println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
