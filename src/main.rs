@@ -3,6 +3,7 @@ use rand_xoshiro::Xoshiro256StarStar;
 use image;
 use imageproc::drawing::draw_hollow_circle;
 use noise::{Fbm, Seedable, NoiseFn};
+use std::time::{Instant, Duration};
 
 mod voronoi;
 use voronoi::Voronoi;
@@ -63,11 +64,16 @@ fn main() {
 
     for seed in 0..12 {
         println!("Generating map {}...", seed);
+        let mut map_duration = Duration::default();
 
         let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
     
         println!("Generating Voronoi...");
+        let start = Instant::now();
         let mut v = Voronoi::new(&mut rng, 256, imgx, imgy);
+        let duration = Instant::now() - start;
+        map_duration += duration;
+        println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
         if seed == 0 {
             println!("\tDrawing...");
             draw_voronoi(&v, imgx, imgy, 1, false);
@@ -75,15 +81,20 @@ fn main() {
 
         let relax_n = 2;
         println!("Performing {} iterations of Lloyd relaxation...", relax_n);
+        let start = Instant::now();
         for _ in 0..relax_n {
             v.improve_centers();
         }
+        let duration = Instant::now() - start;
+        map_duration += duration;
+        println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
         if seed == 0 {
             println!("\tDrawing...");
             draw_voronoi(&v, imgx, imgy, 2, false);
         }
 
         println!("Defining water/land boundaries...");
+        let start = Instant::now();
         let fbm = Fbm::new().set_seed(seed as u32);
         for (idx, (px, py)) in v.centers.iter().enumerate() {
             let x = (*px as i32 - imgx as i32 / 2) as f64 / (imgx / 2) as f64;
@@ -94,8 +105,12 @@ fn main() {
 
             v.is_water[idx] = n + d > 0.5;
         }
+        let duration = Instant::now() - start;
+        map_duration += duration;
+        println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
+
         println!("\tDrawing...");
         draw_voronoi(&v, imgx, imgy, 3 + seed as usize, true);
-        println!("");
+        println!("Finished in {:.2} seconds\n", map_duration.as_secs_f64());
     }
 }
