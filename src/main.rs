@@ -2,6 +2,7 @@ use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 use image;
 use imageproc::drawing::draw_hollow_circle;
+use noise::{Fbm, Seedable, NoiseFn};
 
 mod voronoi;
 use voronoi::Voronoi;
@@ -10,7 +11,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool)
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
     let interior = image::Rgb([255u8, 255, 255]);
     let frontier = image::Rgb([0u8, 0, 0]);
-    let land = image::Rgb([76u8, 70, 50]);
+    let sand = image::Rgb([194u8, 178, 128]);
     let water = image::Rgb([0u8, 0, 255]);
 
     for (idx, points) in vor.cell_membership.iter().enumerate() {
@@ -23,7 +24,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool)
                 if vor.is_water[idx] {
                     *pixel = water;
                 } else {
-                    *pixel = land;
+                    *pixel = sand;
                 }
             }
 
@@ -60,21 +61,41 @@ fn main() {
     let imgx = 400;
     let imgy = 400;
 
-    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
+    for seed in 0..12 {
+        println!("Generating map {}...", seed);
 
-    let mut v = Voronoi::new(&mut rng, 256, imgx, imgy);
-    draw_voronoi(&v, imgx, imgy, 1, false);
+        let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
+    
+        println!("Generating Voronoi...");
+        let mut v = Voronoi::new(&mut rng, 256, imgx, imgy);
+        if seed == 0 {
+            println!("\tDrawing...");
+            draw_voronoi(&v, imgx, imgy, 1, false);
+        }
 
-    for i in 0..2 {
-        v.improve_centers();
-        draw_voronoi(&v, imgx, imgy, i+2, false);
+        let relax_n = 2;
+        println!("Performing {} iterations of Lloyd relaxation...", relax_n);
+        for _ in 0..relax_n {
+            v.improve_centers();
+        }
+        if seed == 0 {
+            println!("\tDrawing...");
+            draw_voronoi(&v, imgx, imgy, 2, false);
+        }
+
+        println!("Defining water/land boundaries...");
+        let fbm = Fbm::new().set_seed(seed as u32);
+        for (idx, (px, py)) in v.centers.iter().enumerate() {
+            let x = (*px as i32 - imgx as i32 / 2) as f64 / (imgx / 2) as f64;
+            let y = (*py as i32 - imgy as i32 / 2) as f64 / (imgy / 2) as f64;
+            let d = x.powi(2) + y.powi(2);
+            let n = fbm.get([x, y]);
+            //print!("{} ", n);
+
+            v.is_water[idx] = n + d > 0.5;
+        }
+        println!("\tDrawing...");
+        draw_voronoi(&v, imgx, imgy, 3 + seed as usize, true);
+        println!("");
     }
-
-    let center = (imgx / 2, imgy / 2);
-    for (idx, p) in v.centers.iter().enumerate() {
-        let d = ((center.0 as i32 - p.0 as i32).pow(2) + (center.1 as i32 - p.1 as i32).pow(2)) as f32 / (imgx / 2).pow(2) as f32;
-
-        v.is_water[idx] = d > 0.5;
-    }
-    draw_voronoi(&v, imgx, imgy, 4, true);
 }
