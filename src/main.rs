@@ -1,12 +1,15 @@
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 use image;
-use imageproc::drawing::draw_hollow_circle;
+use imageproc::drawing::{draw_hollow_circle, draw_line_segment, draw_polygon};
 use noise::{Fbm, Seedable, NoiseFn};
 use std::time::{Instant, Duration};
+use delaunator::{Point, Triangulation, next_halfedge};
 
 mod voronoi;
 use voronoi::Voronoi;
+mod voronoi2;
+use voronoi2::new_delauney;
 
 fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool) {
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
@@ -58,11 +61,49 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool)
     img.save(format!("map_{:02}.png", i)).unwrap();
 }
 
+fn draw_delauney(points: &Vec::<Point>, delauney: &Triangulation, imgx: u32, imgy: u32) {
+    let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
+    let fill = image::Rgb([221u8, 221, 213]);
+    let color_edge = image::Rgb([0u8, 0, 0]);
+
+    for triangle in 0..delauney.triangles.len() / 3 {
+        let p: Vec::<imageproc::point::Point::<i32>> = voronoi2::points_of_triangle(delauney, triangle)
+            .iter()
+            .map(|&e| imageproc::point::Point::new(points[e].x as i32, points[e].y as i32))
+            .collect();
+
+        img = draw_polygon(&img, &p, fill);
+    }
+
+    for e in 0..delauney.triangles.len() {
+        if e > delauney.halfedges[e] {
+            let p = &points[delauney.triangles[e]];
+            let q = &points[delauney.triangles[next_halfedge(e)]];
+
+            img = draw_line_segment(&img, (p.x as f32, p.y as f32), (q.x as f32, q.y as f32), color_edge);
+        }
+    }
+
+    img.save("map_delauney.png").unwrap();
+}
+
 fn main() {
     let imgx = 400;
     let imgy = 400;
 
-    for seed in 0..12 {
+    println!("Generating Delauney triangulation...");
+    let start = Instant::now();
+    let mut rng = Xoshiro256StarStar::seed_from_u64(0);
+    let (points, delauney) = new_delauney(&mut rng, 256, imgx, imgy);
+    let duration = start.elapsed();
+    println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
+    let start = Instant::now();
+    println!("\tDrawing...");
+    draw_delauney(&points, &delauney, imgx, imgy);
+    let duration = start.elapsed();
+    println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
+
+    /*for seed in 0..12 {
         println!("Generating map {}...", seed);
         let mut map_duration = Duration::default();
 
@@ -120,5 +161,5 @@ fn main() {
         println!("\tDrawing...");
         draw_voronoi(&v, imgx, imgy, 3 + seed as usize, true);
         println!("Finished in {:.2} seconds\n", map_duration.as_secs_f64());
-    }
+    }*/
 }

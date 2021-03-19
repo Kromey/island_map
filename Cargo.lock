@@ -134,6 +134,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "delaunator"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3dd9122b66dafadfbc335c706ff5acac5350d1eb799a56c1bac41825e762ddc"
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -220,6 +226,7 @@ dependencies = [
 name = "island_map"
 version = "0.1.0"
 dependencies = [
+ "delaunator",
  "image",
  "imageproc",
  "noise",
