@@ -65,6 +65,8 @@ fn draw_delauney(points: &Vec::<Point>, delauney: &Triangulation, imgx: u32, img
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
     let fill = image::Rgb([221u8, 221, 213]);
     let color_edge = image::Rgb([0u8, 0, 0]);
+    let delauney_point = image::Rgb([255u8, 0, 0]);
+    let voronoi_corner = image::Rgb([0u8, 0, 255]);
 
     for triangle in 0..delauney.triangles.len() / 3 {
         let p: Vec::<imageproc::point::Point::<i32>> = voronoi2::points_of_triangle(delauney, triangle)
@@ -75,12 +77,30 @@ fn draw_delauney(points: &Vec::<Point>, delauney: &Triangulation, imgx: u32, img
         img = draw_polygon(&img, &p, fill);
     }
 
-    for e in 0..delauney.triangles.len() {
+    /*for e in 0..delauney.triangles.len() {
         if e > delauney.halfedges[e] {
             let p = &points[delauney.triangles[e]];
             let q = &points[delauney.triangles[next_halfedge(e)]];
 
             img = draw_line_segment(&img, (p.x as f32, p.y as f32), (q.x as f32, q.y as f32), color_edge);
+        }
+    }*/
+
+    for &Point{x, y} in points.iter() {
+        img = draw_hollow_circle(&img, (x as i32, y as i32), 1, delauney_point);
+    }
+    for triangle in 0..delauney.triangles.len() / 3 {
+        let Point{x, y} = voronoi2::triangle_center(points, delauney, triangle);
+
+        img = draw_hollow_circle(&img, (x as i32, y as i32), 1, voronoi_corner);
+    }
+
+    for e in 0..delauney.triangles.len() {
+        if e > delauney.halfedges[e] {
+            let p = voronoi2::triangle_center(points, delauney, voronoi2::triangle_of_edge(e));
+            let q = voronoi2::triangle_center(points, delauney, voronoi2::triangle_of_edge(delauney.halfedges[e]));
+
+            img = draw_line_segment(&img, (p.x as f32, p.y as f32), (q.x as f32, q.y as f32), voronoi_corner);
         }
     }
 

@@ -52,3 +52,20 @@ pub fn adjacent_triangles(delauney: &Triangulation, t: usize) -> Vec::<usize> {
         })
         .collect()
 }
+
+pub fn circumcenter(a: &Point, b: &Point, c: &Point) -> Point {
+    let ad = a.x.powi(2) + a.y.powi(2);
+    let bd = b.x.powi(2) + b.y.powi(2);
+    let cd = c.x.powi(2) + c.y.powi(2);
+
+    let d = 2. * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
+
+    Point {
+        x: 1. / d * (ad * (b.y - c.y) + bd * (c.y - a.y) + cd * (a.y - b.y)),
+        y: 1. / d * (ad * (c.x - b.x) + bd * (a.x - c.x) + cd * (b.x - a.x)),
+    }
+}
+pub fn triangle_center(points: &Vec::<Point>, delauney: &Triangulation, t: usize) -> Point {
+    let p = points_of_triangle(delauney, t);
+    circumcenter(&points[p[0]], &points[p[1]], &points[p[2]])
+}
