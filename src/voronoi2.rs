@@ -38,3 +38,17 @@ pub fn points_of_triangle(delauney: &Triangulation, t: usize) -> Vec::<usize> {
         .map(|e| delauney.triangles[*e])
         .collect()
 }
+
+pub fn adjacent_triangles(delauney: &Triangulation, t: usize) -> Vec::<usize> {
+    edges_of_triangle(t)
+        .iter()
+        .filter_map(|&e| {
+            let opposite = delauney.halfedges[e];
+            if opposite != delaunator::EMPTY {
+                Some(triangle_of_edge(opposite))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
