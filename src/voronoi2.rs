@@ -22,25 +22,25 @@ pub fn new_delauney<R: Rng + ?Sized>(mut rng: &mut R, cells: usize, width: u32, 
     (seeds, triangulation)
 }
 
-pub fn edges_of_triangle(t: usize) -> [usize; 3] {
+pub fn edges_of_triangle(triangle: usize) -> [usize; 3] {
     [
-        3 * t,
-        3 * t + 1,
-        3 * t + 2,
+        3 * triangle,
+        3 * triangle + 1,
+        3 * triangle + 2,
     ]
 }
 pub fn triangle_of_edge(e: usize) -> usize {
     e / 3
 }
-pub fn points_of_triangle(delauney: &Triangulation, t: usize) -> Vec::<usize> {
-    edges_of_triangle(t)
+pub fn points_of_triangle(delauney: &Triangulation, triangle: usize) -> Vec::<usize> {
+    edges_of_triangle(triangle)
         .iter()
         .map(|e| delauney.triangles[*e])
         .collect()
 }
 
-pub fn adjacent_triangles(delauney: &Triangulation, t: usize) -> Vec::<usize> {
-    edges_of_triangle(t)
+pub fn adjacent_triangles(delauney: &Triangulation, triangle: usize) -> Vec::<usize> {
+    edges_of_triangle(triangle)
         .iter()
         .filter_map(|&e| {
             let opposite = delauney.halfedges[e];
@@ -65,7 +65,7 @@ pub fn circumcenter(a: &Point, b: &Point, c: &Point) -> Point {
         y: 1. / d * (ad * (c.x - b.x) + bd * (a.x - c.x) + cd * (b.x - a.x)),
     }
 }
-pub fn triangle_center(points: &Vec::<Point>, delauney: &Triangulation, t: usize) -> Point {
-    let p = points_of_triangle(delauney, t);
+pub fn triangle_center(points: &Vec::<Point>, delauney: &Triangulation, triangle: usize) -> Point {
+    let p = points_of_triangle(delauney, triangle);
     circumcenter(&points[p[0]], &points[p[1]], &points[p[2]])
 }
