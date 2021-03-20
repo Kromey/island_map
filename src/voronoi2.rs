@@ -1,6 +1,6 @@
 use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
-use delaunator::{Point, Triangulation, triangulate};
+use delaunator::{Point, Triangulation, triangulate, next_halfedge};
 
 pub fn new_delauney<R: Rng + ?Sized>(mut rng: &mut R, cells: usize, width: u32, height: u32) -> (Vec::<Point>, Triangulation) {
     let dist_x = Uniform::from(0..width);
@@ -68,4 +68,20 @@ pub fn circumcenter(a: &Point, b: &Point, c: &Point) -> Point {
 pub fn triangle_center(points: &Vec::<Point>, delauney: &Triangulation, triangle: usize) -> Point {
     let p = points_of_triangle(delauney, triangle);
     circumcenter(&points[p[0]], &points[p[1]], &points[p[2]])
+}
+
+pub fn edges_around_point(delauney: &Triangulation, start: usize) -> Vec<usize> {
+    let mut result = Vec::new();
+    let mut incoming = start;
+    loop {
+        result.push(incoming);
+        let outgoing = next_halfedge(incoming);
+        incoming = delauney.halfedges[outgoing];
+
+        if incoming == delaunator::EMPTY || incoming == start {
+            break;
+        }
+    }
+
+    result
 }

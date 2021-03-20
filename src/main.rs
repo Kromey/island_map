@@ -68,14 +68,14 @@ fn draw_delauney(points: &Vec::<Point>, delauney: &Triangulation, imgx: u32, img
     let delauney_point = image::Rgb([255u8, 0, 0]);
     let voronoi_corner = image::Rgb([0u8, 0, 255]);
 
-    for triangle in 0..delauney.triangles.len() / 3 {
+    /*for triangle in 0..delauney.triangles.len() / 3 {
         let p: Vec::<imageproc::point::Point::<i32>> = voronoi2::points_of_triangle(delauney, triangle)
             .iter()
             .map(|&e| imageproc::point::Point::new(points[e].x as i32, points[e].y as i32))
             .collect();
 
         img = draw_polygon(&img, &p, fill);
-    }
+    }*/
 
     /*for e in 0..delauney.triangles.len() {
         if e > delauney.halfedges[e] {
@@ -86,15 +86,30 @@ fn draw_delauney(points: &Vec::<Point>, delauney: &Triangulation, imgx: u32, img
         }
     }*/
 
-    for &Point{x, y} in points.iter() {
-        img = draw_hollow_circle(&img, (x as i32, y as i32), 1, delauney_point);
-    }
-    for triangle in 0..delauney.triangles.len() / 3 {
-        let Point{x, y} = voronoi2::triangle_center(points, delauney, triangle);
+    println!("\t\tDrawing Voronoi polygons...");
+    let mut seen = vec![false; delauney.triangles.len()];
+    for e in 0..delauney.triangles.len() {
+        let p = delauney.triangles[next_halfedge(e)];
 
-        img = draw_hollow_circle(&img, (x as i32, y as i32), 1, voronoi_corner);
+        if !seen[p] {
+            seen[p] = true;
+            let edges = voronoi2::edges_around_point(delauney, e);
+            let triangles: Vec::<usize> = edges.iter().map(|&e| voronoi2::triangle_of_edge(e)).collect();
+            let mut vertices: Vec::<imageproc::point::Point::<i32>> = triangles.iter().map(|&t| {
+                let p = voronoi2::triangle_center(points, delauney, t);
+                imageproc::point::Point::new(p.x.round() as i32, p.y.round() as i32)
+            }).collect();
+            vertices.dedup();
+            if vertices[0] == vertices[vertices.len() - 1] {
+                vertices.pop();
+            }
+            //println!("{:?}", vertices);
+
+            img = draw_polygon(&img, &vertices, fill);
+        }
     }
 
+    println!("\t\tDrawing Voronoi edges...");
     for e in 0..delauney.triangles.len() {
         if e > delauney.halfedges[e] {
             let p = voronoi2::triangle_center(points, delauney, voronoi2::triangle_of_edge(e));
@@ -104,6 +119,19 @@ fn draw_delauney(points: &Vec::<Point>, delauney: &Triangulation, imgx: u32, img
         }
     }
 
+    println!("\t\tDrawing Voronoi seeds...");
+    for &Point{x, y} in points.iter() {
+        img = draw_hollow_circle(&img, (x as i32, y as i32), 1, delauney_point);
+    }
+
+    println!("\t\tDrawing Voronoi corners...");
+    for triangle in 0..delauney.triangles.len() / 3 {
+        let Point{x, y} = voronoi2::triangle_center(points, delauney, triangle);
+
+        img = draw_hollow_circle(&img, (x.round() as i32, y.round() as i32), 1, voronoi_corner);
+    }
+
+    println!("\t\tSaving...");
     img.save("map_delauney.png").unwrap();
 }
 
