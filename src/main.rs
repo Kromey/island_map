@@ -7,9 +7,7 @@ use std::time::{Instant, Duration};
 use delaunator::{Point, next_halfedge};
 
 mod voronoi;
-//use voronoi::Voronoi;
-mod voronoi2;
-use voronoi2::Voronoi;
+use voronoi::Voronoi;
 
 /*fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool) {
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
