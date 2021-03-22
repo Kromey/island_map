@@ -9,60 +9,10 @@ use delaunator::{Point, next_halfedge};
 mod voronoi;
 use voronoi::Voronoi;
 
-/*fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool) {
-    let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
-    let interior = image::Rgb([255u8, 255, 255]);
-    let frontier = image::Rgb([0u8, 0, 0]);
-    let sand = image::Rgb([194u8, 178, 128]);
-    let water = image::Rgb([0u8, 0, 255]);
-
-    for (idx, points) in vor.cell_membership.iter().enumerate() {
-
-        for p in points.iter() {
-            let pixel = img.get_pixel_mut(p.0, p.1);
-            *pixel = interior;
-
-            if show_water {
-                if vor.is_water[idx] {
-                    *pixel = water;
-                } else {
-                    *pixel = sand;
-                }
-            }
-
-            'neighbors: for dx in -1..1 {
-                if p.0 == 0 && dx == -1 {
-                    continue;
-                }
-                for dy in -1..1 {
-                    if p.1 == 0 && dy == -1 {
-                        continue;
-                    }
-                    if dx == 0 && dy == 0 {
-                        continue;
-                    }
-
-                    let neighbor = ((p.0 as i32 + dx) as u32, (p.1 as i32 + dy) as u32);
-                    if !points.contains(&neighbor) {
-                        *pixel = frontier;
-                        break 'neighbors;
-                    }
-                }
-            }
-        }
-    }
-
-    for center in vor.centers.iter() {
-        img = draw_hollow_circle(&img, (center.0 as i32, center.1 as i32), 1, image::Rgb([255u8, 0, 0]))
-    }
-
-    img.save(format!("map_{:02}.png", i)).unwrap();
-}*/
-
-fn draw_delaunay(vor: &Voronoi, imgx: u32, imgy: u32) {
+fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
     let fill = image::Rgb([221u8, 221, 213]);
-    let color_edge = image::Rgb([0u8, 0, 0]);
+    //let color_edge = image::Rgb([0u8, 0, 0]);
     let delaunay_point = image::Rgb([255u8, 0, 0]);
     let voronoi_corner = image::Rgb([0u8, 0, 255]);
 
@@ -130,23 +80,25 @@ fn draw_delaunay(vor: &Voronoi, imgx: u32, imgy: u32) {
     }
 
     println!("\t\tSaving...");
-    img.save("map_delaunay.png").unwrap();
+    img.save(format!("map_{:02}.png", i+1)).unwrap();
 }
 
 fn main() {
     let imgx = 400;
     let imgy = 400;
 
-    println!("Generating delaunay triangulation...");
-    let start = Instant::now();
-    let v = Voronoi::new(0, 256, imgx, imgy);
-    let duration = start.elapsed();
-    println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
-    let start = Instant::now();
-    println!("\tDrawing...");
-    draw_delaunay(&v, imgx, imgy);
-    let duration = start.elapsed();
-    println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
+    for seed in 0..12 {
+        println!("Generating Voronoi graph...");
+        let start = Instant::now();
+        let v = Voronoi::new(seed, 256, imgx, imgy);
+        let duration = start.elapsed();
+        println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
+        let start = Instant::now();
+        println!("\tDrawing...");
+        draw_voronoi(&v, imgx, imgy, seed);
+        let duration = start.elapsed();
+        println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
+    }
 
     /*for seed in 0..12 {
         println!("Generating map {}...", seed);
