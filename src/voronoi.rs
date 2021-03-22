@@ -8,6 +8,7 @@ pub struct Voronoi {
     pub height: u32,
     pub seeds: Vec<Point>,
     pub delaunay: Triangulation,
+    pub is_water: Vec<bool>,
 }
 
 impl Voronoi {
@@ -28,12 +29,14 @@ impl Voronoi {
         }
     
         let delaunay = triangulate(&seeds).unwrap();
+        let is_water = vec![false; seeds.len()];
 
         Voronoi {
             width,
             height,
             seeds,
             delaunay,
+            is_water,
         }
     }
 
