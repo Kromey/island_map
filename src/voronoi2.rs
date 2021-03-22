@@ -2,7 +2,7 @@ use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 use delaunator::{Point, Triangulation, triangulate, next_halfedge};
 
-pub fn new_delauney<R: Rng + ?Sized>(mut rng: &mut R, cells: usize, width: u32, height: u32) -> (Vec::<Point>, Triangulation) {
+pub fn new_delaunay<R: Rng + ?Sized>(mut rng: &mut R, cells: usize, width: u32, height: u32) -> (Vec::<Point>, Triangulation) {
     let dist_x = Uniform::from(0..width);
     let dist_y = Uniform::from(0..height);
 
@@ -32,18 +32,18 @@ pub fn edges_of_triangle(triangle: usize) -> [usize; 3] {
 pub fn triangle_of_edge(e: usize) -> usize {
     e / 3
 }
-pub fn points_of_triangle(delauney: &Triangulation, triangle: usize) -> Vec::<usize> {
+pub fn points_of_triangle(delaunay: &Triangulation, triangle: usize) -> Vec::<usize> {
     edges_of_triangle(triangle)
         .iter()
-        .map(|e| delauney.triangles[*e])
+        .map(|e| delaunay.triangles[*e])
         .collect()
 }
 
-pub fn adjacent_triangles(delauney: &Triangulation, triangle: usize) -> Vec::<usize> {
+pub fn adjacent_triangles(delaunay: &Triangulation, triangle: usize) -> Vec::<usize> {
     edges_of_triangle(triangle)
         .iter()
         .filter_map(|&e| {
-            let opposite = delauney.halfedges[e];
+            let opposite = delaunay.halfedges[e];
             if opposite != delaunator::EMPTY {
                 Some(triangle_of_edge(opposite))
             } else {
@@ -65,18 +65,18 @@ pub fn circumcenter(a: &Point, b: &Point, c: &Point) -> Point {
         y: 1. / d * (ad * (c.x - b.x) + bd * (a.x - c.x) + cd * (b.x - a.x)),
     }
 }
-pub fn triangle_center(points: &Vec::<Point>, delauney: &Triangulation, triangle: usize) -> Point {
-    let p = points_of_triangle(delauney, triangle);
+pub fn triangle_center(points: &Vec::<Point>, delaunay: &Triangulation, triangle: usize) -> Point {
+    let p = points_of_triangle(delaunay, triangle);
     circumcenter(&points[p[0]], &points[p[1]], &points[p[2]])
 }
 
-pub fn edges_around_point(delauney: &Triangulation, start: usize) -> Vec<usize> {
+pub fn edges_around_point(delaunay: &Triangulation, start: usize) -> Vec<usize> {
     let mut result = Vec::new();
     let mut incoming = start;
     loop {
         result.push(incoming);
         let outgoing = next_halfedge(incoming);
-        incoming = delauney.halfedges[outgoing];
+        incoming = delaunay.halfedges[outgoing];
 
         if incoming == delaunator::EMPTY || incoming == start {
             break;

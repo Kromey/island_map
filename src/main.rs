@@ -9,7 +9,7 @@ use delaunator::{Point, Triangulation, next_halfedge};
 mod voronoi;
 use voronoi::Voronoi;
 mod voronoi2;
-use voronoi2::new_delauney;
+use voronoi2::new_delaunay;
 
 fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: usize, show_water: bool) {
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
@@ -142,7 +142,7 @@ fn main() {
     println!("Generating Delauney triangulation...");
     let start = Instant::now();
     let mut rng = Xoshiro256StarStar::seed_from_u64(0);
-    let (points, delauney) = new_delauney(&mut rng, 256, imgx, imgy);
+    let (points, delauney) = new_delaunay(&mut rng, 256, imgx, imgy);
     let duration = start.elapsed();
     println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
     let start = Instant::now();
