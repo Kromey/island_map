@@ -26,10 +26,9 @@ impl Voronoi {
     /// # Arguments
     ///
     /// * `seed` - The RNG seed for generating Voronoi "seeds", i.e. the points around which Voronoi cells are built
-    /// * `num_cells` - The number of Voronoi "seeds" to create
     /// * `width` - The width of the map
     /// * `height` - The height of the map
-    pub fn new(seed: u64, _num_cells: usize, width: u32, height: u32) -> Voronoi {
+    pub fn new(seed: u64, width: u32, height: u32) -> Voronoi {
         // Generate the seeds from the Poisson disk
         // TODO: The radius should be a parameter exposed to consumers of Voronoi
         let seeds: Vec<Point> = generate_poisson(f64::from(width), f64::from(height), 5., seed)

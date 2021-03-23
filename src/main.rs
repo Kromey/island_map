@@ -99,7 +99,7 @@ fn main() {
 
         println!("Generating Voronoi graph...");
         let start = Instant::now();
-        let mut map = Voronoi::new(seed, 256, img_x, img_y);
+        let mut map = Voronoi::new(seed, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
         map_duration += duration;
