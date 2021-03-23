@@ -9,8 +9,6 @@ const NUM_SAMPLES: u32 = 30;
 
 /// A Point is simply a two-tuple of f64 values
 type Point = (f64, f64);
-/// A Grid is a 2-dimensional array of Point values
-type Grid = Vec<Vec<Option<Point>>>;
 
 /// Generate a Poisson disk distribution.
 ///
@@ -117,7 +115,7 @@ fn in_rectangle(point: Point, width: f64, height: f64) -> bool {
 }
 
 /// Returns true if there is at least one other sample point within `radius` of this point
-fn in_neighborhood(point: Point, grid: &Grid, radius: f64, cell_size: f64) -> bool {
+fn in_neighborhood(point: Point, grid: &[Vec<Option<Point>>], radius: f64, cell_size: f64) -> bool {
     let grid_point = {
         let p = sample_to_grid(point, cell_size);
         (p.0 as isize, p.1 as isize)

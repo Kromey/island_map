@@ -1,4 +1,3 @@
-use image;
 use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
 use noise::{Fbm, NoiseFn, Seedable};
@@ -100,7 +99,7 @@ fn main() {
 
         println!("Generating Voronoi graph...");
         let start = Instant::now();
-        let mut v = Voronoi::new(seed, 256, imgx, imgy);
+        let mut map = Voronoi::new(seed, 256, imgx, imgy);
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
         map_duration += duration;
@@ -108,13 +107,13 @@ fn main() {
         println!("Defining water/land boundaries...");
         let start = Instant::now();
         let fbm = Fbm::new().set_seed(seed as u32);
-        for (idx, p) in v.seeds.iter().enumerate() {
+        for (idx, p) in map.seeds.iter().enumerate() {
             let x = (p.x as i32 - imgx as i32 / 2) as f64 / (imgx / 2) as f64;
             let y = (p.y as i32 - imgy as i32 / 2) as f64 / (imgy / 2) as f64;
-            let d = x.powi(2) + y.powi(2);
-            let n = fbm.get([x, y]);
+            let dist_sq = x.powi(2) + y.powi(2);
+            let noise_val = fbm.get([x, y]);
 
-            v.is_water[idx] = n + d > 0.5;
+            map.is_water[idx] = noise_val + dist_sq > 0.5;
             // TODO: Force perimeter cells to ocean
         }
         let duration = start.elapsed().as_secs_f64();
@@ -123,7 +122,7 @@ fn main() {
 
         let start = Instant::now();
         println!("\tDrawing...");
-        draw_voronoi(&v, imgx, imgy, seed);
+        draw_voronoi(&map, imgx, imgy, seed);
         let duration = start.elapsed();
         println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
 
