@@ -6,7 +6,7 @@ use poisson::generate_poisson;
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
 /// The implementation of the Voronoi graph from its Delaunay triangulation is based on the article
-/// and code at https://mapbox.github.io/delaunator/
+/// and code at <https://mapbox.github.io/delaunator/>
 pub struct Voronoi {
     /// Width of the map
     pub width: u32,
@@ -32,7 +32,7 @@ impl Voronoi {
     pub fn new(seed: u64, _num_cells: usize, width: u32, height: u32) -> Voronoi {
         // Generate the seeds from the Poisson disk
         // TODO: The radius should be a parameter exposed to consumers of Voronoi
-        let seeds: Vec<Point> = generate_poisson(width as f64, height as f64, 5., seed)
+        let seeds: Vec<Point> = generate_poisson(f64::from(width), f64::from(height), 5., seed)
             .map(|p| Point { x: p.0, y: p.1 })
             .collect();
 
@@ -96,10 +96,10 @@ impl Voronoi {
             .iter()
             .filter_map(|&e| {
                 let opposite = self.delaunay.halfedges[e];
-                if opposite != delaunator::EMPTY {
-                    Some(self.triangle_of_edge(opposite))
-                } else {
+                if opposite == delaunator::EMPTY {
                     None
+                } else {
+                    Some(self.triangle_of_edge(opposite))
                 }
             })
             .collect()

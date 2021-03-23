@@ -41,7 +41,7 @@ pub fn generate_poisson(
     let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
 
     // We maintain a grid of our samples for faster radius checking
-    let cell_size = radius / (2f64).sqrt();
+    let cell_size = radius / (2_f64).sqrt();
     let mut grid =
         vec![vec![None; (height / cell_size).ceil() as usize]; (width / cell_size).ceil() as usize];
 

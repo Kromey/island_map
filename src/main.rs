@@ -6,13 +6,13 @@ use std::time::Instant;
 mod voronoi;
 use voronoi::Voronoi;
 
-fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
-    let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
-    let sand = image::Rgb([194u8, 178, 128]);
-    let water = image::Rgb([0u8, 0, 255]);
-    //let edge = image::Rgb([0u8, 0, 0]);
-    //let delaunay_point = image::Rgb([255u8, 0, 0]);
-    //let voronoi_corner = image::Rgb([0u8, 0, 255]);
+fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
+    let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
+    let sand = image::Rgb([194_u8, 178, 128]);
+    let water = image::Rgb([0_u8, 0, 255]);
+    //let edge = image::Rgb([0_u8, 0, 0]);
+    //let delaunay_point = image::Rgb([255_u8, 0, 0]);
+    //let voronoi_corner = image::Rgb([0_u8, 0, 255]);
 
     /*for triangle in 0..delaunay.triangles.len() / 3 {
         let p: Vec::<imageproc::point::Point::<i32>> = voronoi2::points_of_triangle(delaunay, triangle)
@@ -32,7 +32,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
         }
     }*/
 
-    img = draw_filled_rect(&img, Rect::at(0, 0).of_size(imgx, imgy), water);
+    img = draw_filled_rect(&img, Rect::at(0, 0).of_size(img_x, img_y), water);
 
     println!("\t\tDrawing Voronoi polygons...");
     let mut seen = vec![false; vor.delaunay.triangles.len()];
@@ -91,15 +91,15 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
 }
 
 fn main() {
-    let imgx = 400;
-    let imgy = 400;
+    let img_x = 400;
+    let img_y = 400;
 
     for seed in 0..12 {
         let mut map_duration = 0.;
 
         println!("Generating Voronoi graph...");
         let start = Instant::now();
-        let mut map = Voronoi::new(seed, 256, imgx, imgy);
+        let mut map = Voronoi::new(seed, 256, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
         map_duration += duration;
@@ -108,8 +108,8 @@ fn main() {
         let start = Instant::now();
         let fbm = Fbm::new().set_seed(seed as u32);
         for (idx, p) in map.seeds.iter().enumerate() {
-            let x = (p.x as i32 - imgx as i32 / 2) as f64 / (imgx / 2) as f64;
-            let y = (p.y as i32 - imgy as i32 / 2) as f64 / (imgy / 2) as f64;
+            let x = f64::from(p.x as i32 - img_x as i32 / 2) / f64::from(img_x / 2);
+            let y = f64::from(p.y as i32 - img_y as i32 / 2) / f64::from(img_y / 2);
             let dist_sq = x.powi(2) + y.powi(2);
             let noise_val = fbm.get([x, y]);
 
@@ -122,7 +122,7 @@ fn main() {
 
         let start = Instant::now();
         println!("\tDrawing...");
-        draw_voronoi(&map, imgx, imgy, seed);
+        draw_voronoi(&map, img_x, img_y, seed);
         let duration = start.elapsed();
         println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
 
