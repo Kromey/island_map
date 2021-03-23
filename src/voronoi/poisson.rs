@@ -2,7 +2,7 @@ use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 
 /// Number of samples generated/tested around each sampled point.Grid
-/// 
+///
 /// Per Bridson, 30 is a "typical" value; Tulleken says it "gives good results". It certainly appears
 /// to be suitable for our purposes.
 const NUM_SAMPLES: u32 = 30;
@@ -13,36 +13,39 @@ type Point = (f64, f64);
 type Grid = Vec<Vec<Option<Point>>>;
 
 /// Generate a Poisson disk distribution.
-/// 
+///
 /// This is an implementation of Bridson's ["Fast Poisson Disk Sampling"][Bridson]
 /// implented in 2 dimensions following the description and pseudo-code by
 /// [Herman Tulleken][Tulleken].
-/// 
+///
 /// # Arguments
-/// 
+///
 /// * `width` - Width of the distribution
 /// * `height` - Height of the distribution
 /// * `radius` - Minimum radius around a sample in which no other sample may appear
 /// * `seed` - RNG seed for sampling
-/// 
+///
 /// # Returns
-/// 
+///
 /// Returns a vector of (f64, f64) tuples representing each sample. The precise number of samples
 /// depends upon the width, height, radius, and the RNG's output; while it is deterministic for a
 /// given set of all 4 values, the number of samples for a given height, width, and radius will
 /// vary with different seeds.
-/// 
+///
 /// [Bridson]: https://www.cct.lsu.edu/~fharhad/ganbatte/siggraph2007/CD2/content/sketches/0250.pdf
 /// [Tulleken]: http://devmag.org.za/2009/05/03/poisson-disk-sampling/
-pub fn generate_poisson(width: f64, height: f64, radius: f64, seed: u64) -> impl Iterator<Item=Point> {
+pub fn generate_poisson(
+    width: f64,
+    height: f64,
+    radius: f64,
+    seed: u64,
+) -> impl Iterator<Item = Point> {
     let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
 
     // We maintain a grid of our samples for faster radius checking
     let cell_size = radius / (2f64).sqrt();
-    let mut grid = vec![
-        vec![None; (height / cell_size).ceil() as usize];
-        (width / cell_size).ceil() as usize
-    ];
+    let mut grid =
+        vec![vec![None; (height / cell_size).ceil() as usize]; (width / cell_size).ceil() as usize];
 
     // The active list is samples we have not yet finished evaluating
     let mut active = Vec::new();
@@ -64,7 +67,9 @@ pub fn generate_poisson(width: f64, height: f64, radius: f64, seed: u64) -> impl
 
             // Ensure we've picked a point inside the bounds of our rectangle, and more than `radius`
             // distance from any other sampled point
-            if in_rectangle(point, width, height) && !in_neighborhood(point, &grid, radius, cell_size) {
+            if in_rectangle(point, width, height)
+                && !in_neighborhood(point, &grid, radius, cell_size)
+            {
                 // We've got a good one! Add to our active list
                 active.push(point);
 
@@ -105,13 +110,10 @@ fn generate_random_point_around(point: Point, radius: f64, rng: &mut Xoshiro256S
 }
 
 /// Return true if the point is within the bounds of our space.
-/// 
+///
 /// This is true if 0 ≤ x < width and 0 ≤ y < height
 fn in_rectangle(point: Point, width: f64, height: f64) -> bool {
-    point.0 >= 0.
-        && point.0 < width
-        && point.1 >= 0.
-        && point.1 < height
+    point.0 >= 0. && point.0 < width && point.1 >= 0. && point.1 < height
 }
 
 /// Returns true if there is at least one other sample point within `radius` of this point

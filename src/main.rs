@@ -1,7 +1,7 @@
 use image;
-use imageproc::drawing::{draw_polygon, draw_filled_rect};
+use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
-use noise::{Fbm, Seedable, NoiseFn};
+use noise::{Fbm, NoiseFn, Seedable};
 use std::time::Instant;
 
 mod voronoi;
@@ -43,22 +43,21 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
         if !seen[p] {
             seen[p] = true;
             let edges = vor.edges_around_point(e);
-            let triangles: Vec::<usize> = edges.iter().map(|&e| vor.triangle_of_edge(e)).collect();
-            let mut vertices: Vec::<imageproc::point::Point::<i32>> = triangles.iter().map(|&t| {
-                let p = vor.triangle_center(t);
-                imageproc::point::Point::new(p.x.round() as i32, p.y.round() as i32)
-            }).collect();
+            let triangles: Vec<usize> = edges.iter().map(|&e| vor.triangle_of_edge(e)).collect();
+            let mut vertices: Vec<imageproc::point::Point<i32>> = triangles
+                .iter()
+                .map(|&t| {
+                    let p = vor.triangle_center(t);
+                    imageproc::point::Point::new(p.x.round() as i32, p.y.round() as i32)
+                })
+                .collect();
             vertices.dedup();
             if vertices[0] == vertices[vertices.len() - 1] {
                 vertices.pop();
             }
             //println!("{:?}", vertices);
 
-            let fill = if vor.is_water[p] {
-                water
-            } else {
-                sand
-            };
+            let fill = if vor.is_water[p] { water } else { sand };
             img = draw_polygon(&img, &vertices, fill);
         }
 
@@ -89,7 +88,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
     }*/
 
     println!("\t\tSaving...");
-    img.save(format!("map_{:02}.png", i+1)).unwrap();
+    img.save(format!("map_{:02}.png", i + 1)).unwrap();
 }
 
 fn main() {
