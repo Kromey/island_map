@@ -1,9 +1,8 @@
 use image;
-use imageproc::drawing::{/*draw_hollow_circle, draw_line_segment,*/ draw_polygon, draw_filled_rect};
+use imageproc::drawing::{draw_polygon, draw_filled_rect};
 use imageproc::rect::Rect;
 use noise::{Fbm, Seedable, NoiseFn};
 use std::time::Instant;
-use delaunator::next_halfedge;
 
 mod voronoi;
 use voronoi::Voronoi;
@@ -28,7 +27,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
     /*for e in 0..delaunay.triangles.len() {
         if e > delaunay.halfedges[e] {
             let p = &points[delaunay.triangles[e]];
-            let q = &points[delaunay.triangles[next_halfedge(e)]];
+            let q = &points[delaunay.triangles[vor.next_halfedge(e)]];
 
             img = draw_line_segment(&img, (p.x as f32, p.y as f32), (q.x as f32, q.y as f32), color_edge);
         }
@@ -39,7 +38,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
     println!("\t\tDrawing Voronoi polygons...");
     let mut seen = vec![false; vor.delaunay.triangles.len()];
     for e in 0..vor.delaunay.triangles.len() {
-        let p = vor.delaunay.triangles[next_halfedge(e)];
+        let p = vor.delaunay.triangles[vor.next_halfedge(e)];
 
         if !seen[p] {
             seen[p] = true;

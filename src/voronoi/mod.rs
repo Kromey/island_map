@@ -1,4 +1,4 @@
-use delaunator::{Point, Triangulation, triangulate, next_halfedge};
+use delaunator::{Point, Triangulation};
 
 mod poisson;
 use poisson::generate_poisson;
@@ -8,10 +8,15 @@ use poisson::generate_poisson;
 /// The implementation of the Voronoi graph from its Delaunay triangulation is based on the article
 /// and code at https://mapbox.github.io/delaunator/
 pub struct Voronoi {
+    /// Width of the map
     pub width: u32,
+    /// Height of the map
     pub height: u32,
+    /// The "center" points used to define the Voronoi cells
     pub seeds: Vec<Point>,
+    /// The Delaunay triangulation of the Voronoi map
     pub delaunay: Triangulation,
+    /// Whether or not the corresponding cell is water
     pub is_water: Vec<bool>,
 }
 
@@ -25,13 +30,13 @@ impl Voronoi {
     /// * `width` - The width of the map
     /// * `height` - The height of the map
     pub fn new(seed: u64, _num_cells: usize, width: u32, height: u32) -> Voronoi {
+        // Generate the seeds from the Poisson disk 
+        // TODO: The radius should be a parameter exposed to consumers of Voronoi
         let seeds: Vec<Point> = generate_poisson(width as f64, height as f64, 5., seed)
             .map(|p| Point { x: p.0, y: p.1 })
             .collect();
-
-        println!("\t\tGenerated {} seed points", seeds.len());
     
-        let delaunay = triangulate(&seeds).unwrap();
+        let delaunay = delaunator::triangulate(&seeds).unwrap();
         let is_water = vec![false; seeds.len()];
 
         Voronoi {
@@ -65,6 +70,11 @@ impl Voronoi {
     /// * `halfedge` - The index of the halfedge we want to find the triangle for
     pub fn triangle_of_edge(&self, halfedge: usize) -> usize {
         halfedge / 3
+    }
+
+    /// Return the next halfedge
+    pub fn next_halfedge(&self, halfedge: usize) -> usize {
+        delaunator::next_halfedge(halfedge)
     }
 
     /// Find the points for the given triangle
@@ -101,6 +111,9 @@ impl Voronoi {
 
     /// Find the circumcenter of the points `a`, `b`, and `c`.
     pub fn circumcenter(&self, a: &Point, b: &Point, c: &Point) -> Point {
+        // It's magic math!
+        // Actually it's https://en.wikipedia.org/wiki/Circumscribed_circle#Circumcenter_coordinates
+        // ...but I don't understand it...
         let ad = a.x.powi(2) + a.y.powi(2);
         let bd = b.x.powi(2) + b.y.powi(2);
         let cd = c.x.powi(2) + c.y.powi(2);
@@ -120,14 +133,20 @@ impl Voronoi {
     }
 
     /// Find the edges that point in to the specified start point.
+    /// 
+    /// # Bugs
+    /// 
+    /// Certain polygons on the convex hull will return incomplete sets of halfedges due to some
+    /// triangulations being empty.
     pub fn edges_around_point(&self, start: usize) -> Vec<usize> {
         let mut result = Vec::new();
         let mut incoming = start;
         loop {
             result.push(incoming);
-            let outgoing = next_halfedge(incoming);
+            let outgoing = self.next_halfedge(incoming);
             incoming = self.delaunay.halfedges[outgoing];
     
+            // TODO: This breaks on certain polygons on the convex hull
             if incoming == delaunator::EMPTY || incoming == start {
                 break;
             }

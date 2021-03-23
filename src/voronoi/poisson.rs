@@ -85,7 +85,7 @@ pub fn generate_poisson(width: f64, height: f64, radius: f64, seed: u64) -> impl
     grid.into_iter().flatten().filter_map(|point| point)
 }
 
-/// Convert a point into grid cell coordinates
+/// Convert a sample point into grid cell coordinates
 fn sample_to_grid(point: Point, cell_size: f64) -> (usize, usize) {
     (
         (point.0 / cell_size) as usize,
@@ -120,17 +120,21 @@ fn in_neighborhood(point: Point, grid: &Grid, radius: f64, cell_size: f64) -> bo
         let p = sample_to_grid(point, cell_size);
         (p.0 as isize, p.1 as isize)
     };
+    // We'll compare to distance squared, so we can skip the square root operation for better performance
     let r_squared = radius.powi(2);
 
     for x in grid_point.0 - 2..=grid_point.0 + 2 {
+        // Make sure we're still in our grid
         if x < 0 || x >= grid.len() as isize {
             continue;
         }
         for y in grid_point.1 - 2..=grid_point.1 + 2 {
+            // Make sure we're still in our grid
             if y < 0 || y >= grid[0].len() as isize {
                 continue;
             }
 
+            // If there's a sample here, check that it's not too close to us
             if let Some(point2) = grid[x as usize][y as usize] {
                 if (point.0 - point2.0).powi(2) + (point.1 - point2.1).powi(2) < r_squared {
                     return true;
@@ -139,5 +143,6 @@ fn in_neighborhood(point: Point, grid: &Grid, radius: f64, cell_size: f64) -> bo
         }
     }
 
+    // We only make it to here if we find no samples too close
     false
 }
