@@ -1,7 +1,7 @@
-use rand::prelude::*;
-use rand::distributions::{Distribution, Uniform};
-use rand_xoshiro::Xoshiro256StarStar;
 use delaunator::{Point, Triangulation, triangulate, next_halfedge};
+
+mod poisson;
+use poisson::generate_poisson;
 
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 /// 
@@ -24,21 +24,12 @@ impl Voronoi {
     /// * `num_cells` - The number of Voronoi "seeds" to create
     /// * `width` - The width of the map
     /// * `height` - The height of the map
-    pub fn new(seed: u64, num_cells: usize, width: u32, height: u32) -> Voronoi {
-        let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
-        let dist_x = Uniform::from(0..width);
-        let dist_y = Uniform::from(0..height);
-    
-        let mut seeds = Vec::new();
-        while seeds.len() < num_cells {
-            let point = Point{
-                x: dist_x.sample(&mut rng) as f64,
-                y: dist_y.sample(&mut rng) as f64,
-            };
-            if !seeds.contains(&point) {
-                seeds.push(point);
-            }
-        }
+    pub fn new(seed: u64, _num_cells: usize, width: u32, height: u32) -> Voronoi {
+        let seeds: Vec<Point> = generate_poisson(width as f64, height as f64, 5., seed)
+            .map(|p| Point { x: p.0, y: p.1 })
+            .collect();
+
+        println!("\t\tGenerated {} seed points", seeds.len());
     
         let delaunay = triangulate(&seeds).unwrap();
         let is_water = vec![false; seeds.len()];

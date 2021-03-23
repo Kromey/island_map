@@ -1,5 +1,5 @@
 use image;
-use imageproc::drawing::{draw_hollow_circle, draw_line_segment, draw_polygon, draw_filled_rect};
+use imageproc::drawing::{/*draw_hollow_circle, draw_line_segment,*/ draw_polygon, draw_filled_rect};
 use imageproc::rect::Rect;
 use noise::{Fbm, Seedable, NoiseFn};
 use std::time::Instant;
@@ -12,8 +12,8 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
     let mut img = image::ImageBuffer::new(imgx as u32, imgy as u32);
     let sand = image::Rgb([194u8, 178, 128]);
     let water = image::Rgb([0u8, 0, 255]);
-    let edge = image::Rgb([0u8, 0, 0]);
-    let delaunay_point = image::Rgb([255u8, 0, 0]);
+    //let edge = image::Rgb([0u8, 0, 0]);
+    //let delaunay_point = image::Rgb([255u8, 0, 0]);
     //let voronoi_corner = image::Rgb([0u8, 0, 255]);
 
     /*for triangle in 0..delaunay.triangles.len() / 3 {
@@ -63,11 +63,11 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
             img = draw_polygon(&img, &vertices, fill);
         }
 
-        let p = &vor.seeds[p];
-        img = draw_hollow_circle(&img, (p.x as i32, p.y as i32), 1, delaunay_point);
+        //let p = &vor.seeds[p];
+        //img = draw_hollow_circle(&img, (p.x as i32, p.y as i32), 1, delaunay_point);
     }
 
-    println!("\t\tDrawing Voronoi edges...");
+    /*println!("\t\tDrawing Voronoi edges...");
     for e in 0..vor.delaunay.triangles.len() {
         if e > vor.delaunay.halfedges[e] {
             let p = vor.triangle_center(vor.triangle_of_edge(e));
@@ -75,7 +75,7 @@ fn draw_voronoi(vor: &Voronoi, imgx: u32, imgy: u32, i: u64) {
 
             img = draw_line_segment(&img, (p.x as f32, p.y as f32), (q.x as f32, q.y as f32), edge);
         }
-    }
+    }*/
 
     /*println!("\t\tDrawing Voronoi seeds...");
     for &Point{x, y} in vor.seeds.iter() {
