@@ -1,7 +1,6 @@
 use delaunator::{Point, Triangulation};
 
-mod poisson;
-use poisson::generate_poisson;
+use crate::poisson::generate_poisson;
 
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///

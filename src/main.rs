@@ -5,6 +5,7 @@ use std::time::Instant;
 
 mod voronoi;
 use voronoi::Voronoi;
+mod poisson;
 
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
