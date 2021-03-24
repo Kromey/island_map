@@ -57,7 +57,10 @@ pub fn generate_poisson(
 
     while !active.is_empty() {
         // Pop points off our active list until it's exhausted
-        let point = active.pop().expect("Already confirmed vec is not empty");
+        let point = {
+            let i = rng.gen_range(0..active.len());
+            active.swap_remove(i)
+        };
 
         for _ in 0..NUM_SAMPLES {
             // Generate up to NUM_SAMPLES random points between radius and 2*radius from the current point
