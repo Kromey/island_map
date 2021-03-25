@@ -103,6 +103,11 @@ fn main() {
     let img_x = 400;
     let img_y = 400;
 
+    for (x, y) in poisson::Pattern::new() {
+        print!("({:.2}, {:.2}), ", x, y);
+    }
+    println!();
+
     for seed in 0..12 {
         let mut map_duration = 0.;
 

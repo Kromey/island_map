@@ -74,6 +74,15 @@ impl Default for Pattern {
     }
 }
 
+impl IntoIterator for Pattern {
+    type Item = Point;
+    type IntoIter = PatternIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 /// A Point is simply a two-tuple of f64 values
 type Point = (f64, f64);
 
@@ -190,14 +199,12 @@ impl Iterator for PatternIter {
 
     fn next(&mut self) -> Option<Point> {
         if self.current_sample == None {
-            //println!("Have no current_sample, getting one from active...");
             if !self.active.is_empty() {
                 // Pop points off our active list until it's exhausted
                 let point = {
                     let i = self.rng.gen_range(0..self.active.len());
                     self.active.swap_remove(i)
                 };
-                //println!("Adding {:?} as current sample", point);
                 self.current_sample = Some((point, 0));
             }
         }
@@ -209,14 +216,12 @@ impl Iterator for PatternIter {
 
                 // Generate up to `num_samples` random points between radius and 2*radius from the current point
                 let point = self.generate_random_point();
-                //println!("Testing new point {:?}", point);
     
                 // Ensure we've picked a point inside the bounds of our rectangle, and more than `radius`
                 // distance from any other sampled point
                 if self.in_rectangle(point)
                     && !self.in_neighborhood(point)
                 {
-                    //println!("Adding {:?} to active list", point);
                     // We've got a good one!
                     self.add_point(point);
 
@@ -224,13 +229,11 @@ impl Iterator for PatternIter {
                 }
             }
 
-            //println!("Exceeded num_samples, moving to next active sample");
             self.current_sample = None;
 
             return self.next();
         }
 
-        println!("All done!");
         None
     }
 }
