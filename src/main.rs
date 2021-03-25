@@ -1,8 +1,8 @@
+use fast_poisson::Poisson;
 use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
 use noise::{Fbm, NoiseFn, Seedable};
 use std::time::Instant;
-use fast_poisson::Poisson;
 
 mod voronoi;
 use voronoi::Voronoi;
@@ -71,7 +71,10 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         //let p = &vor.seeds[p];
         //img = draw_hollow_circle(&img, (p.x as i32, p.y as i32), 1, delaunay_point);
     }
-    println!("\t\t\tPreprocessing: {} seconds\n\t\t\tDrawing: {} seconds", preprocessing, drawing);
+    println!(
+        "\t\t\tPreprocessing: {} seconds\n\t\t\tDrawing: {} seconds",
+        preprocessing, drawing
+    );
 
     /*println!("\t\tDrawing Voronoi edges...");
     for e in 0..vor.delaunay.triangles.len() {

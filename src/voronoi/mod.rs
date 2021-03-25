@@ -31,15 +31,15 @@ impl Voronoi {
         // Generate the seeds from the Poisson disk
         // TODO: The radius should be a parameter exposed to consumers of Voronoi
         let seeds: Vec<Point> = Poisson {
-                width: f64::from(width),
-                height: f64::from(height),
-                radius: 5.0,
-                seed,
-                ..Default::default()
-            }
-            .iter()
-            .map(|p| Point { x: p.0, y: p.1 })
-            .collect();
+            width: f64::from(width),
+            height: f64::from(height),
+            radius: 5.0,
+            seed,
+            ..Default::default()
+        }
+        .iter()
+        .map(|p| Point { x: p.0, y: p.1 })
+        .collect();
 
         let delaunay = delaunator::triangulate(&seeds).unwrap();
         let is_water = vec![false; seeds.len()];
