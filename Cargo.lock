@@ -146,6 +146,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
+name = "fast_poisson"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d7361eb294d8dcbd29c0c2dc18c2e2be21b795145d7d0b0c19c5a099e94295f"
+dependencies = [
+ "rand 0.8.3",
+ "rand_xoshiro",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -227,6 +237,7 @@ name = "island_map"
 version = "0.1.0"
 dependencies = [
  "delaunator",
+ "fast_poisson",
  "image",
  "imageproc",
  "noise",

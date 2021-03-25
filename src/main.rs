@@ -2,10 +2,10 @@ use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
 use noise::{Fbm, NoiseFn, Seedable};
 use std::time::Instant;
+use fast_poisson::Poisson;
 
 mod voronoi;
 use voronoi::Voronoi;
-mod poisson;
 
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
@@ -103,7 +103,7 @@ fn main() {
     let img_x = 400;
     let img_y = 400;
 
-    for (x, y) in poisson::Pattern::new() {
+    for (x, y) in Poisson::new() {
         print!("({:.2}, {:.2}), ", x, y);
     }
     println!();

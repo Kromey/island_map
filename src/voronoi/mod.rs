@@ -1,6 +1,6 @@
 use delaunator::{Point, Triangulation};
 
-use crate::poisson::Pattern;
+use fast_poisson::Poisson;
 
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
@@ -30,7 +30,7 @@ impl Voronoi {
     pub fn new(seed: u64, width: u32, height: u32) -> Voronoi {
         // Generate the seeds from the Poisson disk
         // TODO: The radius should be a parameter exposed to consumers of Voronoi
-        let seeds: Vec<Point> = Pattern {
+        let seeds: Vec<Point> = Poisson {
                 width: f64::from(width),
                 height: f64::from(height),
                 radius: 5.0,
