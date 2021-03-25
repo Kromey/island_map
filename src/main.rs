@@ -35,12 +35,16 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
 
     img = draw_filled_rect(&img, Rect::at(0, 0).of_size(img_x, img_y), water);
 
+    let mut preprocessing = 0.;
+    let mut drawing = 0.;
+
     println!("\t\tDrawing Voronoi polygons...");
     let mut seen = vec![false; vor.delaunay.triangles.len()];
     for e in 0..vor.delaunay.triangles.len() {
         let p = vor.delaunay.triangles[vor.next_halfedge(e)];
 
         if !seen[p] {
+            let start = Instant::now();
             seen[p] = true;
             let edges = vor.edges_around_point(e);
             let triangles: Vec<usize> = edges.iter().map(|&e| vor.triangle_of_edge(e)).collect();
@@ -55,15 +59,19 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             if vertices[0] == vertices[vertices.len() - 1] {
                 vertices.pop();
             }
+            preprocessing += start.elapsed().as_secs_f64();
             //println!("{:?}", vertices);
 
+            let start = Instant::now();
             let fill = if vor.is_water[p] { water } else { sand };
             img = draw_polygon(&img, &vertices, fill);
+            drawing += start.elapsed().as_secs_f64();
         }
 
         //let p = &vor.seeds[p];
         //img = draw_hollow_circle(&img, (p.x as i32, p.y as i32), 1, delaunay_point);
     }
+    println!("\t\t\tPreprocessing: {} seconds\n\t\t\tDrawing: {} seconds", preprocessing, drawing);
 
     /*println!("\t\tDrawing Voronoi edges...");
     for e in 0..vor.delaunay.triangles.len() {
