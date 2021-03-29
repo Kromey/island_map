@@ -1,6 +1,6 @@
 use delaunator::{Point, Triangulation};
 
-use fast_poisson::Poisson;
+use fast_poisson::Poisson2D;
 
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
@@ -30,16 +30,12 @@ impl Voronoi {
     pub fn new(seed: u64, width: u32, height: u32) -> Voronoi {
         // Generate the seeds from the Poisson disk
         // TODO: The radius should be a parameter exposed to consumers of Voronoi
-        let seeds: Vec<Point> = Poisson {
-            width: f64::from(width),
-            height: f64::from(height),
-            radius: 5.0,
-            seed,
-            ..Default::default()
-        }
-        .iter()
-        .map(|p| Point { x: p.0, y: p.1 })
-        .collect();
+        let seeds: Vec<Point> = Poisson2D::new()
+            .with_dimensions([f64::from(width), f64::from(height)], 5.0)
+            .with_seed(seed)
+            .iter()
+            .map(|[x, y]| Point { x, y })
+            .collect();
 
         let delaunay = delaunator::triangulate(&seeds).unwrap();
         let is_water = vec![false; seeds.len()];

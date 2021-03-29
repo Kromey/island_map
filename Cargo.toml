@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 rand = "0.8.3"
 rand_xoshiro = "0.6.0"
-fast_poisson = "0.1.0"
+fast_poisson = "0.2.0"
 image = "0.23.14"
 imageproc = "0.22.0"
 noise = "0.7.0"

@@ -1,4 +1,4 @@
-use fast_poisson::Poisson;
+use fast_poisson::Poisson2D;
 use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
 use noise::{Fbm, NoiseFn, Seedable};
@@ -106,7 +106,7 @@ fn main() {
     let img_x = 400;
     let img_y = 400;
 
-    for (x, y) in Poisson::new() {
+    for [x, y] in Poisson2D::new() {
         print!("({:.2}, {:.2}), ", x, y);
     }
     println!();
