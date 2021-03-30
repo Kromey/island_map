@@ -12,11 +12,13 @@ pub struct Voronoi {
     /// Height of the map
     pub height: u32,
     /// The "center" points used to define the Voronoi cells
-    pub seeds: Vec<Point>,
+    pub points: Vec<Point>,
     /// The Delaunay triangulation of the Voronoi map
     pub delaunay: Triangulation,
     /// Whether or not the corresponding cell is water
     pub is_water: Vec<bool>,
+    /// Height of the corresponding cell
+    pub heightmap: Vec<f64>,
 }
 
 impl Voronoi {
@@ -30,22 +32,24 @@ impl Voronoi {
     pub fn new(seed: u64, width: u32, height: u32) -> Voronoi {
         // Generate the seeds from the Poisson disk
         // TODO: The radius should be a parameter exposed to consumers of Voronoi
-        let seeds: Vec<Point> = Poisson2D::new()
+        let points: Vec<Point> = Poisson2D::new()
             .with_dimensions([f64::from(width), f64::from(height)], 5.0)
             .with_seed(seed)
             .iter()
             .map(|[x, y]| Point { x, y })
             .collect();
 
-        let delaunay = delaunator::triangulate(&seeds).unwrap();
-        let is_water = vec![false; seeds.len()];
+        let delaunay = delaunator::triangulate(&points).unwrap();
+        let is_water = vec![false; points.len()];
+        let heightmap = vec![0.0; points.len()];
 
         Voronoi {
             width,
             height,
-            seeds,
+            points,
             delaunay,
             is_water,
+            heightmap,
         }
     }
 
@@ -126,7 +130,7 @@ impl Voronoi {
     /// Find the circumcenter of the given triangle
     pub fn triangle_center(&self, triangle: usize) -> Point {
         let p = self.points_of_triangle(triangle);
-        self.circumcenter(&self.seeds[p[0]], &self.seeds[p[1]], &self.seeds[p[2]])
+        self.circumcenter(&self.points[p[0]], &self.points[p[1]], &self.points[p[2]])
     }
 
     /// Find the edges that point in to the specified start point.

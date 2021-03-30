@@ -147,14 +147,14 @@ fn main() {
         let start = Instant::now();
         let mut map = Voronoi::new(seed, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.seeds.len());
+        println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.points.len());
         map_duration += duration;
 
         println!("Defining water/land boundaries...");
         let start = Instant::now();
         let fbm = Fbm::new().set_seed(seed as u32);
         let mut minmax = (0.5, 0.5);
-        for (idx, p) in map.seeds.iter().enumerate() {
+        for (idx, p) in map.points.iter().enumerate() {
             if (p.x - center_x).abs() > boundary_x || (p.y - center_y).abs() > boundary_y {
                 // Cells whose seed is within 10 pixels of the border are water
                 map.is_water[idx] = true;
