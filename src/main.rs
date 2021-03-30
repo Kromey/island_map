@@ -74,7 +74,12 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             } else if vor.is_water[p] {
                 water
             } else {
-                sand
+                //sand
+                image::Rgb([
+                    108.0.lerp(255., vor.heightmap[p]) as u8,
+                    152.0.lerp(255., vor.heightmap[p]) as u8,
+                    95.0.lerp(255., vor.heightmap[p]) as u8,
+                    ])
             };
 
             if !vor.is_water[p] || is_coast {
@@ -172,7 +177,8 @@ fn main() {
                 minmax = (f64::min(minmax.0, noise_val), f64::max(minmax.1, noise_val));
 
                 // Using noise and subtracting the distance gradient to define land or water
-                map.is_water[idx] = noise_val - dist_sq * 0.5 < 0.0;
+                map.heightmap[idx] = noise_val - dist_sq * 0.5;
+                map.is_water[idx] = map.heightmap[idx] < 0.0;
             }
         }
         let duration = start.elapsed().as_secs_f64();
