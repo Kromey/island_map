@@ -1,8 +1,8 @@
+use bracket_noise::prelude::*;
 use fast_poisson::Poisson2D;
 use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
 use lerp::Lerp;
-use noise::{Fbm, NoiseFn, Seedable};
 use std::time::Instant;
 
 mod voronoi;
@@ -52,6 +52,10 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             let is_coast = vor.is_water[p]
                 && edges.iter().any(|&e| {
                     !vor.is_water[vor.delaunay.triangles[e]]
+                });
+            let is_beach = !vor.is_water[p]
+                && edges.iter().any(|&e| {
+                    vor.is_water[vor.delaunay.triangles[e]]
                 });
             let triangles: Vec<usize> = edges.iter().map(|&e| vor.triangle_of_edge(e)).collect();
             let mut vertices: Vec<imageproc::point::Point<i32>> = triangles
@@ -157,8 +161,20 @@ fn main() {
 
         println!("Defining water/land boundaries...");
         let start = Instant::now();
-        let fbm = Fbm::new().set_seed(seed as u32);
-        let mut minmax = (0.5, 0.5);
+
+        // I have no idea what these parameters do!
+        // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs
+        // They do seem to give me results I like, though!
+        let mut fbm = FastNoise::seeded(seed as u64);
+        fbm.set_noise_type(NoiseType::SimplexFractal);
+        fbm.set_fractal_type(FractalType::FBM);
+        fbm.set_fractal_octaves(5);
+        fbm.set_fractal_gain(0.6);
+        fbm.set_fractal_lacunarity(2.0);
+        fbm.set_frequency(2.0);
+
+        let mut minmax = (0.2, 0.2);
+
         for (idx, p) in map.points.iter().enumerate() {
             if (p.x - center_x).abs() > boundary_x || (p.y - center_y).abs() > boundary_y {
                 // Cells whose seed is within 10 pixels of the border are water
@@ -173,11 +189,13 @@ fn main() {
 
                 // Get a noise value, and "pull" it toward 0.5; this raises low values while also
                 // "blunting" high peaks
-                let noise_val = fbm.get([x, y]).lerp(0.5, 0.5);
+                let mut noise_val = fbm.get_noise(x as f32, y as f32) as f64;
+                noise_val = noise_val.lerp(0.5, 0.5);
                 minmax = (f64::min(minmax.0, noise_val), f64::max(minmax.1, noise_val));
 
                 // Using noise and subtracting the distance gradient to define land or water
-                map.heightmap[idx] = noise_val - dist_sq * 0.5;
+                //map.heightmap[idx] = noise_val - dist_sq * 0.75;
+                map.heightmap[idx] = noise_val.lerp(-0.3, dist_sq);
                 map.is_water[idx] = map.heightmap[idx] < 0.0;
             }
         }
