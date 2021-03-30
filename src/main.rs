@@ -10,9 +10,9 @@ use voronoi::Voronoi;
 
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
-    let sand = image::Rgb([194_u8, 178, 128]);
-    let water = image::Rgb([48_u8, 96, 130]);
-    let coastal_waters = image::Rgb([203_u8, 219, 252]);
+    let sand = image::Rgb([160_u8, 144, 119]);
+    let water = image::Rgb([70_u8, 107, 159]);
+    let coastal_waters = image::Rgb([184_u8, 217, 235]);
     //let edge = image::Rgb([0_u8, 0, 0]);
     //let delaunay_point = image::Rgb([255_u8, 0, 0]);
     //let voronoi_corner = image::Rgb([0_u8, 0, 255]);
@@ -76,7 +76,11 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             } else {
                 sand
             };
-            img = draw_polygon(&img, &vertices, fill);
+
+            if !vor.is_water[p] || is_coast {
+                // Already doing a "background" in our water color, so no need to draw water again
+                img = draw_polygon(&img, &vertices, fill);
+            }
             drawing += start.elapsed().as_secs_f64();
         }
 
@@ -122,8 +126,8 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
 }
 
 fn main() {
-    let img_x = 400;
-    let img_y = 400;
+    let img_x = 800;
+    let img_y = 800;
 
     for [x, y] in Poisson2D::new() {
         print!("({:.2}, {:.2}), ", x, y);
@@ -133,6 +137,9 @@ fn main() {
     let center_x = f64::from(img_x / 2);
     let center_y = f64::from(img_y / 2);
 
+    let boundary_x = center_x - 10.;
+    let boundary_y = center_y - 10.;
+
     for seed in 0..12 {
         let mut map_duration = 0.;
 
@@ -140,7 +147,7 @@ fn main() {
         let start = Instant::now();
         let mut map = Voronoi::new(seed, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds)", duration);
+        println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.seeds.len());
         map_duration += duration;
 
         println!("Defining water/land boundaries...");
@@ -148,7 +155,7 @@ fn main() {
         let fbm = Fbm::new().set_seed(seed as u32);
         let mut minmax = (0.5, 0.5);
         for (idx, p) in map.seeds.iter().enumerate() {
-            if (p.x - center_x).abs() > 190. || (p.y - center_y).abs() > 190. {
+            if (p.x - center_x).abs() > boundary_x || (p.y - center_y).abs() > boundary_y {
                 // Cells whose seed is within 10 pixels of the border are water
                 map.is_water[idx] = true;
             } else {
