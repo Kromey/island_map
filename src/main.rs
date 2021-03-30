@@ -1,6 +1,7 @@
 use fast_poisson::Poisson2D;
 use imageproc::drawing::{draw_filled_rect, draw_polygon};
 use imageproc::rect::Rect;
+use lerp::Lerp;
 use noise::{Fbm, NoiseFn, Seedable};
 use std::time::Instant;
 
@@ -68,8 +69,15 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             drawing += start.elapsed().as_secs_f64();
         }
 
-        //let p = &vor.seeds[p];
-        //img = draw_hollow_circle(&img, (p.x as i32, p.y as i32), 1, delaunay_point);
+        /*
+        let point = &vor.seeds[p];
+        let color = if vor.delaunay.hull.contains(&p) {
+            image::Rgb([255_u8, 0, 0])
+        } else {
+            image::Rgb([0_u8, 255, 0])
+        };
+        img = draw_hollow_circle(&img, (point.x as i32, point.y as i32), 1, color);
+        */
     }
     println!(
         "\t\t\tPreprocessing: {} seconds\n\t\t\tDrawing: {} seconds",
@@ -111,10 +119,13 @@ fn main() {
     }
     println!();
 
+    let center_x = f64::from(img_x / 2);
+    let center_y = f64::from(img_y / 2);
+
     for seed in 0..12 {
         let mut map_duration = 0.;
 
-        println!("Generating Voronoi graph...");
+        println!("Generating Voronoi graph {}...", seed + 1);
         let start = Instant::now();
         let mut map = Voronoi::new(seed, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
@@ -124,17 +135,31 @@ fn main() {
         println!("Defining water/land boundaries...");
         let start = Instant::now();
         let fbm = Fbm::new().set_seed(seed as u32);
+        let mut minmax = (0.5, 0.5);
         for (idx, p) in map.seeds.iter().enumerate() {
-            let x = f64::from(p.x as i32 - img_x as i32 / 2) / f64::from(img_x / 2);
-            let y = f64::from(p.y as i32 - img_y as i32 / 2) / f64::from(img_y / 2);
-            let dist_sq = x.powi(2) + y.powi(2);
-            let noise_val = fbm.get([x, y]);
+            if (p.x - center_x).abs() > 190. || (p.y - center_y).abs() > 190. {
+                // Cells whose seed is within 10 pixels of the border are water
+                map.is_water[idx] = true;
+            } else {
+                // Calculate distance from the center, scaled to [0, 1] for the orthogonal directions
+                // Diagonals can exceed 1, but that's okay
+                let x = (f64::from(p.x) - center_x) / center_x;
+                let y = (f64::from(p.y) - center_y) / center_y;
+                // We square the distance to give greater weight to values further from the center
+                let dist_sq = x.powi(2) + y.powi(2);
 
-            map.is_water[idx] = noise_val + dist_sq > 0.5;
-            // TODO: Force perimeter cells to ocean
+                // Get a noise value, and "pull" it toward 0.5; this raises low values while also
+                // "blunting" high peaks
+                let noise_val = fbm.get([x, y]).lerp(0.5, 0.5);
+                minmax = (f64::min(minmax.0, noise_val), f64::max(minmax.1, noise_val));
+
+                // Using noise and subtracting the distance gradient to define land or water
+                map.is_water[idx] = noise_val - dist_sq * 0.5 < 0.0;
+            }
         }
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
+        println!("\tNoise min/max: {:?}", minmax);
         map_duration += duration;
 
         let start = Instant::now();
