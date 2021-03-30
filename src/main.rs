@@ -11,7 +11,8 @@ use voronoi::Voronoi;
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
     let sand = image::Rgb([194_u8, 178, 128]);
-    let water = image::Rgb([0_u8, 0, 255]);
+    let water = image::Rgb([48_u8, 96, 130]);
+    let coastal_waters = image::Rgb([203_u8, 219, 252]);
     //let edge = image::Rgb([0_u8, 0, 0]);
     //let delaunay_point = image::Rgb([255_u8, 0, 0]);
     //let voronoi_corner = image::Rgb([0_u8, 0, 255]);
@@ -48,6 +49,10 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             let start = Instant::now();
             seen[p] = true;
             let edges = vor.edges_around_point(e);
+            let is_coast = vor.is_water[p]
+                && edges.iter().any(|&e| {
+                    !vor.is_water[vor.delaunay.triangles[e]]
+                });
             let triangles: Vec<usize> = edges.iter().map(|&e| vor.triangle_of_edge(e)).collect();
             let mut vertices: Vec<imageproc::point::Point<i32>> = triangles
                 .iter()
@@ -64,7 +69,13 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             //println!("{:?}", vertices);
 
             let start = Instant::now();
-            let fill = if vor.is_water[p] { water } else { sand };
+            let fill = if is_coast {
+                coastal_waters
+            } else if vor.is_water[p] {
+                water
+            } else {
+                sand
+            };
             img = draw_polygon(&img, &vertices, fill);
             drawing += start.elapsed().as_secs_f64();
         }
