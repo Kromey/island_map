@@ -205,7 +205,7 @@ fn main() {
         // Redistribute heights to "stretch" peaks to 1.0 -- we want mountains!
         for height in map.heightmap.iter_mut() {
             if *height > 0.0 {
-                *height = height.lerp(1.0, height.powi(2) / minmax.1.powi(2));
+                *height = height.lerp(1.0, *height / minmax.1).powi(2);
             }
             minmax2 = (f64::min(minmax2.0, *height), f64::max(minmax2.1, *height));
         }
