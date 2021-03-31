@@ -40,7 +40,7 @@ impl Voronoi {
             .collect();
 
         let delaunay = delaunator::triangulate(&points).unwrap();
-        let is_water = vec![false; points.len()];
+        let is_water = vec![true; points.len()];
         let heightmap = vec![0.0; points.len()];
 
         Voronoi {

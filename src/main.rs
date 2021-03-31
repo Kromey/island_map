@@ -146,9 +146,6 @@ fn main() {
     let center_x = f64::from(img_x / 2);
     let center_y = f64::from(img_y / 2);
 
-    let boundary_x = center_x - 10.;
-    let boundary_y = center_y - 10.;
-
     for seed in 0..12 {
         let mut map_duration = 0.;
 
@@ -159,7 +156,7 @@ fn main() {
         println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.points.len());
         map_duration += duration;
 
-        println!("Defining water/land boundaries...");
+        println!("Generating heightmap...");
         let start = Instant::now();
 
         // I have no idea what these parameters do!
@@ -175,29 +172,70 @@ fn main() {
 
         let mut minmax = (0.2, 0.2);
 
-        for (idx, p) in map.points.iter().enumerate() {
-            if (p.x - center_x).abs() > boundary_x || (p.y - center_y).abs() > boundary_y {
-                // Cells whose seed is within 10 pixels of the border are water
-                map.is_water[idx] = true;
-            } else {
-                // Calculate distance from the center, scaled to [0, 1] for the orthogonal directions
-                // Diagonals can exceed 1, but that's okay
-                let x = (f64::from(p.x) - center_x) / center_x;
-                let y = (f64::from(p.y) - center_y) / center_y;
-                // We square the distance to give greater weight to values further from the center
-                let dist_sq = x.powi(2) + y.powi(2);
+        fn get_height(point: &delaunator::Point, center_x: f64, center_y: f64, noise: &FastNoise) -> f64 {
+            // Calculate distance from the center, scaled to [0, 1] for the orthogonal directions
+            // Diagonals can exceed 1, but that's okay
+            let x = (f64::from(point.x) - center_x) / center_x;
+            let y = (f64::from(point.y) - center_y) / center_y;
+            // We square the distance to give greater weight to values further from the center
+            let dist_sq = x.powi(2) + y.powi(2);
 
-                // Get a noise value, and "pull" it toward 0.5; this raises low values while also
-                // "blunting" high peaks
-                let mut noise_val = fbm.get_noise(x as f32, y as f32) as f64;
-                noise_val = noise_val.lerp(0.5, 0.5);
-                noise_val = noise_val.lerp(-0.2, dist_sq);
-                minmax = (f64::min(minmax.0, noise_val), f64::max(minmax.1, noise_val));
+            // Get a noise value, and "pull" it toward 0.5; this raises low values while also
+            // "blunting" high peaks
+            let mut height = noise.get_noise(x as f32, y as f32) as f64;
+            height = height.lerp(0.5, 0.5);
+            height = height.lerp(-0.2, dist_sq);
+
+            height
+        }
+
+        let max_x = f64::from(img_x);
+        let max_y = f64::from(img_y);
+
+        let mut seen = vec![false; map.delaunay.triangles.len()];
+        for e in 0..map.delaunay.triangles.len() {
+            let point_idx = map.delaunay.triangles[map.next_halfedge(e)];
+
+            if !seen[point_idx] {
+                seen[point_idx] = true;
+                let edges = map.edges_around_point(e);
+                let triangles: Vec<usize> = edges.iter().map(|&e| map.triangle_of_edge(e)).collect();
+                let mut vertices: Vec<delaunator::Point> = triangles
+                    .iter()
+                    .map(|&t| map.triangle_center(t) )
+                    .collect();
+                if vertices.iter().any(|delaunator::Point {x, y}| {
+                    *x < 0.0 || *x > max_x || *y < 0.0 || *y > max_y
+                })
+                {
+                    // Some of these get ridiculously far out of bounds, not sure how
+                    // Fortunately this only happens around the edges, so we can safely skip 'em
+                    continue;
+                }
+                vertices.dedup();
+                if vertices.first() == vertices.last() {
+                    vertices.pop();
+                }
+                
+                // Set the height of a cell to be the average of the heights of its corners
+                let count = vertices.len() as f64;
+                if count == 0.0 {
+                    // No vertices? Not sure how, but skip it regardless
+                    continue;
+                }
+                let sum: f64 = vertices
+                    .iter()
+                    .map(|p| get_height(&p, center_x, center_y, &fbm))
+                    .sum();
+
+                let height = sum / count;
 
                 // Using noise and subtracting the distance gradient to define land or water
                 //map.heightmap[idx] = noise_val - dist_sq * 0.75;
-                map.heightmap[idx] = noise_val;
-                map.is_water[idx] = map.heightmap[idx] < 0.0;
+                map.heightmap[point_idx] = height;
+                map.is_water[point_idx] = map.heightmap[point_idx] < 0.0;
+
+                minmax = (f64::min(minmax.0, height), f64::max(minmax.1, height));
             }
         }
 
