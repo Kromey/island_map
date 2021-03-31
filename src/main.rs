@@ -1,6 +1,6 @@
 use bracket_noise::prelude::*;
 use fast_poisson::Poisson2D;
-use imageproc::drawing::{draw_filled_rect, draw_polygon};
+use imageproc::drawing::{draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
 use std::time::Instant;
@@ -35,7 +35,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         }
     }*/
 
-    img = draw_filled_rect(&img, Rect::at(0, 0).of_size(img_x, img_y), water);
+    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(img_x, img_y), water);
 
     let mut preprocessing = 0.;
     let mut drawing = 0.;
@@ -88,7 +88,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
 
             if !vor.is_water[p] || is_coast {
                 // Already doing a "background" in our water color, so no need to draw water again
-                img = draw_polygon(&img, &vertices, fill);
+                draw_polygon_mut(&mut img, &vertices, fill);
             }
             drawing += start.elapsed().as_secs_f64();
         }
@@ -195,7 +195,7 @@ fn main() {
 
                 // Using noise and subtracting the distance gradient to define land or water
                 //map.heightmap[idx] = noise_val - dist_sq * 0.75;
-                map.heightmap[idx] = noise_val.lerp(-0.3, dist_sq);
+                map.heightmap[idx] = noise_val.lerp(-0.2, dist_sq);
                 map.is_water[idx] = map.heightmap[idx] < 0.0;
             }
         }
