@@ -191,17 +191,29 @@ fn main() {
                 // "blunting" high peaks
                 let mut noise_val = fbm.get_noise(x as f32, y as f32) as f64;
                 noise_val = noise_val.lerp(0.5, 0.5);
+                noise_val = noise_val.lerp(-0.2, dist_sq);
                 minmax = (f64::min(minmax.0, noise_val), f64::max(minmax.1, noise_val));
 
                 // Using noise and subtracting the distance gradient to define land or water
                 //map.heightmap[idx] = noise_val - dist_sq * 0.75;
-                map.heightmap[idx] = noise_val.lerp(-0.2, dist_sq);
+                map.heightmap[idx] = noise_val;
                 map.is_water[idx] = map.heightmap[idx] < 0.0;
             }
         }
+
+        let mut minmax2 = minmax;
+        // Redistribute heights to "stretch" peaks to 1.0 -- we want mountains!
+        for height in map.heightmap.iter_mut() {
+            if *height > 0.0 {
+                *height = height.lerp(1.0, height.powi(2) / minmax.1.powi(2));
+            }
+            minmax2 = (f64::min(minmax2.0, *height), f64::max(minmax2.1, *height));
+        }
+
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
         println!("\tNoise min/max: {:?}", minmax);
+        println!("\tRedistributed min/max: {:?}", minmax2);
         map_duration += duration;
 
         let start = Instant::now();
