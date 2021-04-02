@@ -13,8 +13,10 @@ const SEA_LEVEL: f64 = 0.0;
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
     let _sand = image::Rgb([160_u8, 144, 119]);
-    let water = image::Rgb([70_u8, 107, 159]);
+    let ocean = image::Rgb([70_u8, 107, 159]);
     let coastal_waters = image::Rgb([184_u8, 217, 235]);
+    let lagoon = image::Rgb([184_u8, 245, 235]);
+    let lake = image::Rgb([70_u8, 107, 159]);
     //let edge = image::Rgb([0_u8, 0, 0]);
     //let delaunay_point = image::Rgb([255_u8, 0, 0]);
     //let voronoi_corner = image::Rgb([0_u8, 0, 255]);
@@ -37,7 +39,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         }
     }*/
 
-    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(img_x, img_y), water);
+    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(img_x, img_y), ocean);
 
     let mut preprocessing = 0.;
     let mut drawing = 0.;
@@ -69,9 +71,9 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             let start = Instant::now();
             let fill = match vor.biomes[p] {
                 Biome::Coast => coastal_waters,
-                Biome::Lake => water,
-                Biome::Ocean => water,
-                Biome::Lagoon => image::Rgb([128u8, 0, 0]),
+                Biome::Lake => lake,
+                Biome::Ocean => ocean,
+                Biome::Lagoon => lagoon,
                 Biome::Beach => {
                     //sand
                     image::Rgb([
