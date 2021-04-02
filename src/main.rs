@@ -1,9 +1,11 @@
 use bracket_noise::prelude::*;
 use fast_poisson::Poisson2D;
-use imageproc::drawing::{draw_filled_rect_mut, draw_polygon_mut};
+use imageproc::drawing::{draw_filled_circle_mut, draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
 use std::time::Instant;
+use rand::{prelude::*, seq::SliceRandom};
+use rand_xoshiro::Xoshiro256StarStar;
 
 mod voronoi;
 use voronoi::{Biome, Voronoi};
@@ -104,6 +106,24 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         preprocessing, drawing
     );
 
+    println!("\t\tDrawing rivers...");
+    for river in vor.rivers.iter() {
+        let mut prev = {
+            let delaunator::Point{ x, y } = vor.points[river[0]];
+            (x as f32, y as f32)
+        };
+        for &p in river.iter().skip(1) {
+            let delaunator::Point{ x, y } = vor.points[p];
+            let current = (x as f32, y as f32);
+            draw_line_segment_mut(&mut img, prev, current, image::Rgb([0_u8, 0, 0]));
+
+            prev = current;
+        }
+
+        let (x, y) = prev;
+        draw_filled_circle_mut(&mut img, (x as i32, y as i32), 2, image::Rgb([0_u8, 0, 0]));
+    }
+
     /*println!("\t\tDrawing Voronoi edges...");
     for e in 0..vor.delaunay.triangles.len() {
         if e > vor.delaunay.halfedges[e] {
@@ -144,6 +164,8 @@ fn main() {
 
     for seed in 0..12 {
         let mut map_duration = 0.;
+
+        let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
 
         println!("Generating Voronoi graph {}...", seed + 1);
         let start = Instant::now();
@@ -252,19 +274,6 @@ fn main() {
         let start = Instant::now();
         println!("Assigning biomes...");
 
-        // Build an index of points to an incoming half-edge; useful to find the point's cell
-        // and neighbors later
-        let point_halfedge = {
-            let mut index = vec![usize::MAX; map.points.len()];
-            for e in 0..map.delaunay.triangles.len() {
-                let edge = map.delaunay.triangles[map.next_halfedge(e)];
-                if index[edge] == usize::MAX {
-                    index[edge] = e;
-                }
-            }
-            index
-        };
-
         // Initial pass just to define land/sea border; we use Lake instead of Ocean for now
         for i in 0..map.points.len() {
             let delaunator::Point{x,y} = map.points[i];
@@ -290,11 +299,10 @@ fn main() {
         let mut active = vec![first];
         while !active.is_empty() {
             let p = active.pop().unwrap();
-            let edges = map.edges_around_point(point_halfedge[p]);
 
             map.biomes[p] = {
                 // Check adjacent cells if they're land
-                if edges.iter().any(|&e| map.heightmap[map.delaunay.triangles[e]] > SEA_LEVEL ) {
+                if map.neighbors_of_point(p).into_iter().any(|p| map.heightmap[p] > SEA_LEVEL ) {
                     Biome::Coast
                 } else {
                     Biome::Ocean
@@ -302,15 +310,7 @@ fn main() {
             };
 
             // Append all neighboring "Lake" cells
-            active.extend(edges.iter().filter_map(|&e| {
-                let p = map.delaunay.triangles[e];
-
-                if map.biomes[p] == Biome::Lake {
-                    Some(p)
-                } else {
-                    None
-                }
-            }));
+            active.extend(map.neighbors_of_point(p).into_iter().filter(|&p| map.biomes[p] == Biome::Lake ));
         }
 
         // Now flood-fill again, looking for "real" open Ocean and Ocean-adjacent coasts
@@ -318,20 +318,17 @@ fn main() {
         let mut active = vec![first];
         while !active.is_empty() {
             let p = active.pop().unwrap();
-            let edges = map.edges_around_point(point_halfedge[p]);
             
             real_ocean[p] = true;
 
             // Append all neighboring Ocean or Coast cells, IF the current cell is Ocean
             if map.biomes[p] == Biome::Ocean {
-                active.extend(edges.iter().filter_map(|&e| {
-                    let p = map.delaunay.triangles[e];
-
-                    match map.biomes[p] {
-                        Biome::Coast | Biome::Ocean => Some(p),
-                        _ => None,
-                    }
-                }).filter(|&p| !real_ocean[p]));
+                active.extend(
+                    map
+                        .neighbors_of_point(p)
+                        .into_iter()
+                        .filter(|&p| (map.biomes[p] == Biome::Coast || map.biomes[p] == Biome::Ocean) && !real_ocean[p] )
+                );
             }
         }
         // Now we'll flood-fill Ocean/Coast that isn't "real", but only from disconnected Ocean
@@ -344,20 +341,81 @@ fn main() {
         }).collect();
         while !active.is_empty() {
             let p = active.pop().unwrap();
-            let edges = map.edges_around_point(point_halfedge[p]);
             
             map.biomes[p] = Biome::Lagoon;
 
             // Append all neighboring Coast cells that aren't "real"
-            active.extend(edges.iter().filter_map(|&e| {
-                let p = map.delaunay.triangles[e];
-
-                match map.biomes[p] {
-                    Biome::Coast => Some(p),
-                    _ => None,
-                }
-            }).filter(|&p| !real_ocean[p]));
+            active.extend(
+                map
+                    .neighbors_of_point(p)
+                    .into_iter()
+                    .filter(|&p| map.biomes[p] == Biome::Coast && !real_ocean[p] )
+            );
         }
+
+        let duration = start.elapsed().as_secs_f64();
+        println!("\tDone! ({:.2} seconds)", duration);
+        map_duration += duration;
+
+        // Rivers
+        let start = Instant::now();
+        println!("Creating rivers...");
+
+        // Start by finding the high polygons; rivers will start here
+        let mut sources: Vec<_> = map.heightmap
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, height)| {
+                if *height >= 0.8 {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let amount = sources.len() / 5;
+        let (starts, _) = sources.partial_shuffle(&mut rng, amount);
+        let mut rivers: Vec<Vec<usize>> = Vec::new();
+        for (river, start) in starts.into_iter().enumerate() {
+            rivers.push(Vec::new());
+
+            rivers[river].push(*start);
+            let mut point = *start;
+
+            loop {
+                // Find the lowest neighbor
+                if let Some(p) = map.neighbors_of_point(point)
+                    .into_iter()
+                    .filter(|p| !rivers[river].contains(p))
+                    .min_by(|&p1, &p2| {
+                        if map.heightmap[p1] < map.heightmap[p2] {
+                            std::cmp::Ordering::Less
+                        } else {
+                            std::cmp::Ordering::Greater
+                        }
+                    })
+                {
+                    // Make sure it's lower than us
+                    if map.heightmap[p] > map.heightmap[point] {
+                        // TODO: Need to actually do something with these
+                        break;
+                    } else {
+                        point = p;
+                    }
+    
+                    rivers[river].push(point);
+    
+                    // Check if we've reached water
+                    match map.biomes[point] {
+                        Biome::Coast | Biome::Lake | Biome::Lagoon | Biome::Ocean => break,
+                        _ => {},
+                    }
+                } else {
+                    break;
+                }
+            }
+        }
+        map.rivers = rivers;
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
