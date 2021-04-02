@@ -376,14 +376,12 @@ fn main() {
         }
         let max_height = new_heights.iter()
             .fold(new_heights[0], |max, &h| f64::max(max, h));
-        for height in new_heights.iter_mut() {
-            if *height < 0.0 {
-                *height = 0.0;
-            } else {
-                *height = (*height / max_height).powf(1.5);
+        for (i, height) in new_heights.iter().enumerate() {
+            if *height > 0.0 {
+                let height = (*height / max_height).powi(2);
+                map.heightmap[i] = map.heightmap[i].lerp(1.0, height);
             }
         }
-        map.heightmap = new_heights;
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
