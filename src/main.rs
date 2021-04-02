@@ -174,7 +174,7 @@ fn main() {
         println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.points.len());
         map_duration += duration;
 
-        println!("Generating heightmap...");
+        println!("Generating coastline...");
         let start = Instant::now();
 
         // I have no idea what these parameters do!
@@ -188,8 +188,6 @@ fn main() {
         fbm.set_fractal_lacunarity(2.0);
         fbm.set_frequency(2.0);
 
-        let mut minmax = (0.2, 0.2);
-
         fn get_height(point: &delaunator::Point, center_x: f64, center_y: f64, noise: &FastNoise) -> f64 {
             // Calculate distance from the center, scaled to [0, 1] for the orthogonal directions
             // Diagonals can exceed 1, but that's okay
@@ -198,10 +196,10 @@ fn main() {
             // We square the distance to give greater weight to values further from the center
             let dist_sq = x.powi(2) + y.powi(2);
 
-            // Get a noise value, and "pull" it toward 0.5; this raises low values while also
-            // "blunting" high peaks
+            // Get a noise value, and "pull" it up
             let mut height = noise.get_noise(x as f32, y as f32) as f64;
             height = height.lerp(0.5, 0.5);
+            // Lerp it towards a point below sea level, using our squared distance as the t-value
             height = height.lerp(-0.2, dist_sq);
 
             height
@@ -248,31 +246,16 @@ fn main() {
 
                 let height = sum / count;
 
-                // Using noise and subtracting the distance gradient to define land or water
-                //map.heightmap[idx] = noise_val - dist_sq * 0.75;
                 map.heightmap[point_idx] = height;
-
-                minmax = (f64::min(minmax.0, height), f64::max(minmax.1, height));
             }
-        }
-
-        let mut minmax2 = minmax;
-        // Redistribute heights to "stretch" peaks to 1.0 -- we want mountains!
-        for height in map.heightmap.iter_mut() {
-            if *height > 0.0 {
-                *height = height.lerp(1.0, *height / minmax.1).powi(2);
-            }
-            minmax2 = (f64::min(minmax2.0, *height), f64::max(minmax2.1, *height));
         }
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
-        println!("\tNoise min/max: {:?}", minmax);
-        println!("\tRedistributed min/max: {:?}", minmax2);
         map_duration += duration;
 
         let start = Instant::now();
-        println!("Assigning biomes...");
+        println!("Defining waterlines...");
 
         // Initial pass just to define land/sea border; we use Lake instead of Ocean for now
         for i in 0..map.points.len() {
@@ -289,13 +272,8 @@ fn main() {
         }
 
         // Use a flood-fill to turn open ocean into, well, Ocean
-        let (first, _) = map.points.iter().enumerate().min_by(|(_, p1), (_, p2)| {
-            if (p1.x, p1.y) < (p2.x, p2.y) {
-                std::cmp::Ordering::Less
-            } else {
-                std::cmp::Ordering::Greater
-            }
-        }).unwrap();
+        // By starting from a point on the hull we guarantee we start from open ocean
+        let first = map.delaunay.hull[0];
         let mut active = vec![first];
         while !active.is_empty() {
             let p = active.pop().unwrap();
@@ -357,6 +335,60 @@ fn main() {
         println!("\tDone! ({:.2} seconds)", duration);
         map_duration += duration;
 
+        // Define a new heightmap based on distance from Coast
+        // Lagoons are considered "coast", and Lakes do not add to elevation
+        let start = Instant::now();
+        println!("Generating heightmap...");
+
+        let mut new_heights = vec![f64::MAX; map.heightmap.len()];
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for i in 0..map.heightmap.len() {
+                let my_height = new_heights[i];
+
+                if map.biomes[i] == Biome::Ocean || map.biomes[i] == Biome::Coast || map.biomes[i] == Biome::Lagoon {
+                    new_heights[i] = 0.0;
+                } else {
+                    let start = my_height;
+                    let min = map.neighbors_of_point(i)
+                        .iter()
+                        .filter(|&&p| new_heights[p] > -0.1)
+                        .fold(start, |min, &p| f64::min(min, new_heights[p]) );
+
+                    let dist = if map.biomes[i] == Biome::Lake {
+                        min
+                    } else {
+                        min + 1.0
+                    };
+                    
+                    if dist >= start {
+                        continue;
+                    }
+                    
+                    new_heights[i] = f64::min(new_heights[i], dist);
+                }
+
+                if (my_height - new_heights[i]).abs() > f64::EPSILON {
+                    changed = true;
+                }
+            }
+        }
+        let max_height = new_heights.iter()
+            .fold(new_heights[0], |max, &h| f64::max(max, h));
+        for height in new_heights.iter_mut() {
+            if *height < 0.0 {
+                *height = 0.0;
+            } else {
+                *height = *height / max_height;
+            }
+        }
+        map.heightmap = new_heights;
+
+        let duration = start.elapsed().as_secs_f64();
+        println!("\tDone! ({:.2} seconds)", duration);
+        map_duration += duration;
+
         // Rivers
         let start = Instant::now();
         println!("Creating rivers...");
@@ -373,7 +405,7 @@ fn main() {
                 }
             })
             .collect();
-        let amount = sources.len() / 5;
+        let amount = usize::min(sources.len() / 5, 15);
         let (starts, _) = sources.partial_shuffle(&mut rng, amount);
         let mut rivers: Vec<Vec<usize>> = Vec::new();
         for (river, start) in starts.into_iter().enumerate() {
