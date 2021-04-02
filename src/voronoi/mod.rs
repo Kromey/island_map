@@ -6,6 +6,7 @@ use fast_poisson::Poisson2D;
 pub enum Biome {
     Ocean,
     Coast,
+    Lagoon,
     Lake,
     Beach,
 }

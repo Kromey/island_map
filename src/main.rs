@@ -71,6 +71,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
                 Biome::Coast => coastal_waters,
                 Biome::Lake => water,
                 Biome::Ocean => water,
+                Biome::Lagoon => image::Rgb([128u8, 0, 0]),
                 Biome::Beach => {
                     //sand
                     image::Rgb([
@@ -308,6 +309,52 @@ fn main() {
                     None
                 }
             }));
+        }
+
+        // Now flood-fill again, looking for "real" open Ocean and Ocean-adjacent coasts
+        let mut real_ocean = vec![false; map.points.len()];
+        let mut active = vec![first];
+        while !active.is_empty() {
+            let p = active.pop().unwrap();
+            let edges = map.edges_around_point(point_halfedge[p]);
+            
+            real_ocean[p] = true;
+
+            // Append all neighboring Ocean or Coast cells, IF the current cell is Ocean
+            if map.biomes[p] == Biome::Ocean {
+                active.extend(edges.iter().filter_map(|&e| {
+                    let p = map.delaunay.triangles[e];
+
+                    match map.biomes[p] {
+                        Biome::Coast | Biome::Ocean => Some(p),
+                        _ => None,
+                    }
+                }).filter(|&p| !real_ocean[p]));
+            }
+        }
+        // Now we'll flood-fill Ocean/Coast that isn't "real", but only from disconnected Ocean
+        active = real_ocean.iter().enumerate().filter_map(|(i, is_real)| {
+            if !is_real && map.biomes[i] == Biome::Ocean {
+                Some(i)
+            } else {
+                None
+            }
+        }).collect();
+        while !active.is_empty() {
+            let p = active.pop().unwrap();
+            let edges = map.edges_around_point(point_halfedge[p]);
+            
+            map.biomes[p] = Biome::Lagoon;
+
+            // Append all neighboring Coast cells that aren't "real"
+            active.extend(edges.iter().filter_map(|&e| {
+                let p = map.delaunay.triangles[e];
+
+                match map.biomes[p] {
+                    Biome::Coast => Some(p),
+                    _ => None,
+                }
+            }).filter(|&p| !real_ocean[p]));
         }
 
         let duration = start.elapsed().as_secs_f64();
