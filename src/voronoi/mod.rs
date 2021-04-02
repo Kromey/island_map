@@ -2,6 +2,14 @@ use delaunator::{Point, Triangulation};
 
 use fast_poisson::Poisson2D;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Biome {
+    Ocean,
+    Coast,
+    Lake,
+    Beach,
+}
+
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
 /// The implementation of the Voronoi graph from its Delaunay triangulation is based on the article
@@ -15,10 +23,10 @@ pub struct Voronoi {
     pub points: Vec<Point>,
     /// The Delaunay triangulation of the Voronoi map
     pub delaunay: Triangulation,
-    /// Whether or not the corresponding cell is water
-    pub is_water: Vec<bool>,
     /// Height of the corresponding cell
     pub heightmap: Vec<f64>,
+    /// Assigned biome of the corresponding cell
+    pub biomes: Vec<Biome>,
 }
 
 impl Voronoi {
@@ -40,7 +48,7 @@ impl Voronoi {
             .collect();
 
         let delaunay = delaunator::triangulate(&points).unwrap();
-        let is_water = vec![true; points.len()];
+        let biomes = vec![Biome::Ocean; points.len()];
         let heightmap = vec![0.0; points.len()];
 
         Voronoi {
@@ -48,8 +56,8 @@ impl Voronoi {
             height,
             points,
             delaunay,
-            is_water,
             heightmap,
+            biomes,
         }
     }
 

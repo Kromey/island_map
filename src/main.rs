@@ -6,11 +6,13 @@ use lerp::Lerp;
 use std::time::Instant;
 
 mod voronoi;
-use voronoi::Voronoi;
+use voronoi::{Biome, Voronoi};
+
+const SEA_LEVEL: f64 = 0.0;
 
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
-    let sand = image::Rgb([160_u8, 144, 119]);
+    let _sand = image::Rgb([160_u8, 144, 119]);
     let water = image::Rgb([70_u8, 107, 159]);
     let coastal_waters = image::Rgb([184_u8, 217, 235]);
     //let edge = image::Rgb([0_u8, 0, 0]);
@@ -40,7 +42,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut preprocessing = 0.;
     let mut drawing = 0.;
 
-    println!("\t\tDrawing Voronoi polygons...");
+    println!("\tDrawing Voronoi polygons...");
     let mut seen = vec![false; vor.delaunay.triangles.len()];
     for e in 0..vor.delaunay.triangles.len() {
         let p = vor.delaunay.triangles[vor.next_halfedge(e)];
@@ -49,14 +51,6 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             let start = Instant::now();
             seen[p] = true;
             let edges = vor.edges_around_point(e);
-            let is_coast = vor.is_water[p]
-                && edges.iter().any(|&e| {
-                    !vor.is_water[vor.delaunay.triangles[e]]
-                });
-            let is_beach = !vor.is_water[p]
-                && edges.iter().any(|&e| {
-                    vor.is_water[vor.delaunay.triangles[e]]
-                });
             let triangles: Vec<usize> = edges.iter().map(|&e| vor.triangle_of_edge(e)).collect();
             let mut vertices: Vec<imageproc::point::Point<i32>> = triangles
                 .iter()
@@ -73,23 +67,22 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             //println!("{:?}", vertices);
 
             let start = Instant::now();
-            let fill = if is_coast {
-                coastal_waters
-            } else if vor.is_water[p] {
-                water
-            } else {
-                //sand
-                image::Rgb([
-                    108.0.lerp(255., vor.heightmap[p]) as u8,
-                    152.0.lerp(255., vor.heightmap[p]) as u8,
-                    95.0.lerp(255., vor.heightmap[p]) as u8,
-                    ])
+            let fill = match vor.biomes[p] {
+                Biome::Coast => coastal_waters,
+                Biome::Lake => water,
+                Biome::Ocean => water,
+                Biome::Beach => {
+                    //sand
+                    image::Rgb([
+                        108.0.lerp(255., vor.heightmap[p]) as u8,
+                        152.0.lerp(255., vor.heightmap[p]) as u8,
+                        95.0.lerp(255., vor.heightmap[p]) as u8,
+                        ])
+                },
+                //_ => image::Rgb([0u8, 0, 0]),
             };
 
-            if !vor.is_water[p] || is_coast {
-                // Already doing a "background" in our water color, so no need to draw water again
-                draw_polygon_mut(&mut img, &vertices, fill);
-            }
+            draw_polygon_mut(&mut img, &vertices, fill);
             drawing += start.elapsed().as_secs_f64();
         }
 
@@ -104,7 +97,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         */
     }
     println!(
-        "\t\t\tPreprocessing: {} seconds\n\t\t\tDrawing: {} seconds",
+        "\t\tPreprocessing: {} seconds\n\t\tDrawing: {} seconds",
         preprocessing, drawing
     );
 
@@ -130,7 +123,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         img = draw_hollow_circle(&img, (x.round() as i32, y.round() as i32), 1, voronoi_corner);
     }*/
 
-    println!("\t\tSaving...");
+    println!("\tSaving...");
     img.save(format!("map_{:02}.png", i + 1)).unwrap();
 }
 
@@ -233,7 +226,6 @@ fn main() {
                 // Using noise and subtracting the distance gradient to define land or water
                 //map.heightmap[idx] = noise_val - dist_sq * 0.75;
                 map.heightmap[point_idx] = height;
-                map.is_water[point_idx] = map.heightmap[point_idx] < 0.0;
 
                 minmax = (f64::min(minmax.0, height), f64::max(minmax.1, height));
             }
@@ -255,7 +247,75 @@ fn main() {
         map_duration += duration;
 
         let start = Instant::now();
-        println!("\tDrawing...");
+        println!("Assigning biomes...");
+
+        // Build an index of points to an incoming half-edge; useful to find the point's cell
+        // and neighbors later
+        let point_halfedge = {
+            let mut index = vec![usize::MAX; map.points.len()];
+            for e in 0..map.delaunay.triangles.len() {
+                let edge = map.delaunay.triangles[map.next_halfedge(e)];
+                if index[edge] == usize::MAX {
+                    index[edge] = e;
+                }
+            }
+            index
+        };
+
+        // Initial pass just to define land/sea border; we use Lake instead of Ocean for now
+        for i in 0..map.points.len() {
+            let delaunator::Point{x,y} = map.points[i];
+            map.biomes[i] = if map.heightmap[i] < SEA_LEVEL {
+                Biome::Lake
+            } else {
+                if x < 10. || x > f64::from(img_x) - 10. || y < 10. || y > f64::from(img_y) - 10. {
+                    Biome::Lake
+                } else {
+                    Biome::Beach
+                }
+            };
+        }
+
+        // Use a flood-fill to turn open ocean into, well, Ocean
+        let (first, _) = map.points.iter().enumerate().min_by(|(_, p1), (_, p2)| {
+            if (p1.x, p1.y) < (p2.x, p2.y) {
+                std::cmp::Ordering::Less
+            } else {
+                std::cmp::Ordering::Greater
+            }
+        }).unwrap();
+        let mut active = vec![first];
+        while !active.is_empty() {
+            let p = active.pop().unwrap();
+            let edges = map.edges_around_point(point_halfedge[p]);
+
+            map.biomes[p] = {
+                // Check adjacent cells if they're land
+                if edges.iter().any(|&e| map.heightmap[map.delaunay.triangles[e]] > SEA_LEVEL ) {
+                    Biome::Coast
+                } else {
+                    Biome::Ocean
+                }
+            };
+
+            // Append all neighboring "Lake" cells
+            active.extend(edges.iter().filter_map(|&e| {
+                let p = map.delaunay.triangles[e];
+
+                if map.biomes[p] == Biome::Lake {
+                    Some(p)
+                } else {
+                    None
+                }
+            }));
+        }
+
+        let duration = start.elapsed().as_secs_f64();
+        println!("\tDone! ({:.2} seconds)", duration);
+        map_duration += duration;
+
+        let start = Instant::now();
+        println!("Drawing...");
         draw_voronoi(&map, img_x, img_y, seed);
         let duration = start.elapsed();
         println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
