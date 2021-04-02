@@ -380,7 +380,7 @@ fn main() {
             if *height < 0.0 {
                 *height = 0.0;
             } else {
-                *height = *height / max_height;
+                *height = (*height / max_height).powf(1.5);
             }
         }
         map.heightmap = new_heights;
