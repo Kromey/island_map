@@ -391,7 +391,14 @@ fn main() {
         let start = Instant::now();
         println!("Creating rivers...");
 
-        // Start by finding the high polygons; rivers will start here
+        // Start by erasing Lakes; we'll add some later
+        for biome in map.biomes.iter_mut() {
+            if *biome == Biome::Lake {
+                *biome = Biome::Beach;
+            }
+        }
+
+        // Finding the high polygons; rivers will start here
         let mut sources: Vec<_> = map.heightmap
             .iter()
             .enumerate()
@@ -403,20 +410,19 @@ fn main() {
                 }
             })
             .collect();
-        let amount = usize::min(sources.len() / 5, 15);
+        let amount = usize::min(sources.len() / 5, 17);
         let (starts, _) = sources.partial_shuffle(&mut rng, amount);
-        let mut rivers: Vec<Vec<usize>> = Vec::new();
-        for (river, start) in starts.into_iter().enumerate() {
-            rivers.push(Vec::new());
+        for start in starts.into_iter() {
+            let mut river = Vec::new();
 
-            rivers[river].push(*start);
+            river.push(*start);
             let mut point = *start;
 
             loop {
                 // Find the lowest neighbor
                 if let Some(p) = map.neighbors_of_point(point)
                     .into_iter()
-                    .filter(|p| !rivers[river].contains(p))
+                    .filter(|p| !river.contains(p))
                     .min_by(|&p1, &p2| {
                         if map.heightmap[p1] < map.heightmap[p2] {
                             std::cmp::Ordering::Less
@@ -433,7 +439,7 @@ fn main() {
                         point = p;
                     }
     
-                    rivers[river].push(point);
+                    river.push(point);
     
                     // Check if we've reached water
                     match map.biomes[point] {
@@ -444,8 +450,11 @@ fn main() {
                     break;
                 }
             }
+
+            if river.len() > 3 {
+                map.rivers.push(river);
+            }
         }
-        map.rivers = rivers;
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
