@@ -10,6 +10,9 @@ use rand_xoshiro::Xoshiro256StarStar;
 mod voronoi;
 use voronoi::{Biome, Voronoi};
 
+mod dartland;
+use dartland::DartLand;
+
 const SEA_LEVEL: f64 = 0.0;
 
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
@@ -188,6 +191,7 @@ fn main() {
         fbm.set_fractal_lacunarity(2.0);
         fbm.set_frequency(2.0);
 
+        /*
         fn get_height(point: &delaunator::Point, center_x: f64, center_y: f64, noise: &FastNoise) -> f64 {
             // Calculate distance from the center, scaled to [0, 1] for the orthogonal directions
             // Diagonals can exceed 1, but that's okay
@@ -203,6 +207,13 @@ fn main() {
             height = height.lerp(-0.2, dist_sq);
 
             height
+        }
+        */
+        let darts = DartLand::new(4, 2, img_x, img_y, seed as u64);
+        fn get_height(point: &delaunator::Point, darts: &DartLand, noise: &FastNoise) -> f64 {
+            darts.get(point.x, point.y)
+                + (0.3 - noise.get_noise(point.x as f32, point.y as f32) as f64) * 10.0
+                - 5.0
         }
 
         let max_x = f64::from(img_x);
@@ -241,13 +252,18 @@ fn main() {
                 }
                 let sum: f64 = vertices
                     .iter()
-                    .map(|p| get_height(&p, center_x, center_y, &fbm))
+                    .map(|p| get_height(&p, &darts, &fbm))
                     .sum();
 
                 let height = sum / count;
 
                 map.heightmap[point_idx] = height;
             }
+        }
+
+        let max = *map.heightmap.iter().reduce(|max, h| if h > max { h } else { max }).unwrap();
+        for height in map.heightmap.iter_mut() {
+            *height = (*height / max) * 1.2 - 0.2;
         }
 
         let duration = start.elapsed().as_secs_f64();

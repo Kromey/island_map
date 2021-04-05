@@ -274,6 +274,7 @@ dependencies = [
  "imageproc",
  "lerp",
  "rand 0.8.3",
+ "rand_distr 0.4.0",
  "rand_xoshiro",
 ]
 
