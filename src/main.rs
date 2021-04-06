@@ -354,7 +354,7 @@ fn main() {
                     let min = map.neighbors_of_point(i)
                         .iter()
                         .filter(|&&p| new_heights[p] > -0.1)
-                        .fold(start, |min, &p| f64::min(min, new_heights[p]) );
+                        .fold(start, |min, &p| min.min(new_heights[p]) );
 
                     let dist = if map.biomes[i] == Biome::Lake {
                         min
@@ -366,7 +366,7 @@ fn main() {
                         continue;
                     }
                     
-                    new_heights[i] = f64::min(new_heights[i], dist);
+                    new_heights[i] = new_heights[i].min(dist);
                 }
 
                 if (my_height - new_heights[i]).abs() > f64::EPSILON {
@@ -375,7 +375,7 @@ fn main() {
             }
         }
         let max_height = new_heights.iter()
-            .fold(new_heights[0], |max, &h| f64::max(max, h));
+            .fold(new_heights[0], |max, &h| max.max(h));
         for (i, height) in new_heights.iter().enumerate() {
             if *height > 0.0 {
                 let height = (*height / max_height).powi(2);
