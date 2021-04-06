@@ -1,5 +1,4 @@
 use bracket_noise::prelude::*;
-use fast_poisson::Poisson2D;
 use imageproc::drawing::{draw_filled_circle_mut, draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
@@ -154,11 +153,6 @@ fn main() {
     let img_x = 800;
     let img_y = 800;
 
-    for [x, y] in Poisson2D::new() {
-        print!("({:.2}, {:.2}), ", x, y);
-    }
-    println!();
-
     let center_x = f64::from(img_x / 2);
     let center_y = f64::from(img_y / 2);
 
@@ -180,7 +174,7 @@ fn main() {
         // I have no idea what these parameters do!
         // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs
         // They do seem to give me results I like, though!
-        let mut fbm = FastNoise::seeded(seed as u64);
+        let mut fbm = FastNoise::seeded(seed);
         fbm.set_noise_type(NoiseType::SimplexFractal);
         fbm.set_fractal_type(FractalType::FBM);
         fbm.set_fractal_octaves(5);
@@ -196,11 +190,29 @@ fn main() {
             // We square the distance to give greater weight to values further from the center
             let dist_sq = x.powi(2) + y.powi(2);
 
+            // Add a second point
+            let center_x = center_x - 100.0;
+            let center_y = center_y - 200.0;
+            let x = (f64::from(point.x) - center_x) / center_x;
+            let y = (f64::from(point.y) - center_y) / center_y;
+            let dist2_sq = 1.0 - x.powi(2) - y.powi(2);
+
+            // Add another point, inverted
+            let center_x = (center_x + 100.0) * 1.5;
+            let center_y = center_y + 400.0;
+            let x = (f64::from(point.x) - center_x) / center_x;
+            let y = (f64::from(point.y) - center_y) / center_y;
+            let dist3_sq = 1.0 - x.powi(2) - y.powi(2);
+
+            // Now merge them into a single gradient
+            let mut gradient = dist_sq.max(dist2_sq * 0.85).max(dist3_sq * 0.5);
+            gradient = gradient.clamp(0.0, 1.0);
+
             // Get a noise value, and "pull" it up
             let mut height = noise.get_noise(x as f32, y as f32) as f64;
             height = height.lerp(0.5, 0.5);
             // Lerp it towards a point below sea level, using our squared distance as the t-value
-            height = height.lerp(-0.2, dist_sq);
+            height = height.lerp(-0.2, gradient);
 
             height
         }
