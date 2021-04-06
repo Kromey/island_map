@@ -177,9 +177,9 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "fast_poisson"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e7183e1dfc9c956949ac22031bc7be0701b35deba9586b976f2923f9c37d0b9"
+checksum = "fedb5e49326d0e874fb6fa993c051c8fd031a094b9d5b4ba2c58bccd6e049087"
 dependencies = [
  "rand 0.8.3",
  "rand_distr 0.4.0",
