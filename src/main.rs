@@ -179,7 +179,7 @@ fn main() {
         fbm.set_fractal_lacunarity(2.0);
         fbm.set_frequency(2.0);
 
-        fn get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, _angle2: f64) -> f64 {
+        fn get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, angle2: f64) -> f64 {
             let scale = dimensions[0].max(dimensions[1]) / 3.0;
 
             let center_x = dimensions[0] / 2.0;
@@ -203,11 +203,29 @@ fn main() {
                 1.0 - dx.powi(2) - dy.powi(2)
             };
 
+            // Add a third point, sometimes equal-but-opposite, sometimes on angle2
+            let grad2_2 = {
+                let dist = 180.0;
+                let angle1 = match (angle1 * 100.0).round() as usize % 3 {
+                    0 => angle2,
+                    1 => angle1 + std::f64::consts::PI,
+                    2 => angle1.min(angle2) + (angle1 - angle2).abs() / 2.0,
+                    _ => unreachable!(),
+                };
+                let x = center_x + dist * angle1.cos();
+                let y = center_y + dist * angle1.sin();
+
+                let dx = (f64::from(point.x) - x) / scale;
+                let dy = (f64::from(point.y) - y) / scale;
+
+                1.0 - dx.powi(2) - dy.powi(2)
+            };
+
             // And another point
             let grad3 = {
                 let dist = 300.0;
-                let x = center_x + dist * angle1.cos();
-                let y = center_y + dist * angle1.sin();
+                let x = center_x + dist * angle2.cos();
+                let y = center_y + dist * angle2.sin();
 
                 let dx = (f64::from(point.x) - x) / scale;
                 let dy = (f64::from(point.y) - y) / scale;
@@ -216,7 +234,7 @@ fn main() {
             };
 
             // Now merge them into a single gradient
-            let mut gradient = grad1.max(grad2 * 0.85).min(grad3.powi(3) + 0.45);
+            let mut gradient = grad1.max(grad2 * 0.85).max(grad2_2 * 0.80).min(grad3.powi(3) + 0.45);
             gradient = gradient.clamp(0.0, 1.0);
 
             // Get a noise value, and "pull" it up
