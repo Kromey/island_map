@@ -153,9 +153,6 @@ fn main() {
     let img_x = 800;
     let img_y = 800;
 
-    let center_x = f64::from(img_x / 2);
-    let center_y = f64::from(img_y / 2);
-
     for seed in 0..12 {
         let mut map_duration = 0.;
 
@@ -182,43 +179,60 @@ fn main() {
         fbm.set_fractal_lacunarity(2.0);
         fbm.set_frequency(2.0);
 
-        fn get_height(point: &delaunator::Point, center_x: f64, center_y: f64, noise: &FastNoise) -> f64 {
-            // Calculate distance from the center, scaled to [0, 1] for the orthogonal directions
-            // Diagonals can exceed 1, but that's okay
-            let x = (f64::from(point.x) - center_x) / center_x;
-            let y = (f64::from(point.y) - center_y) / center_y;
-            // We square the distance to give greater weight to values further from the center
-            let dist_sq = x.powi(2) + y.powi(2);
+        fn get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, _angle2: f64) -> f64 {
+            let scale = dimensions[0].max(dimensions[1]) / 3.0;
+
+            let center_x = dimensions[0] / 2.0;
+            let center_y = dimensions[1] / 2.0;
+
+            // For our first point we just use the center
+            let x = (f64::from(point.x) - center_x) / scale;
+            let y = (f64::from(point.y) - center_y) / scale;
+            // Use the distance function, but squared to give greater dropoff
+            let grad1 = 1.0 - x.powi(2) - y.powi(2);
 
             // Add a second point
-            let center_x = center_x - 100.0;
-            let center_y = center_y - 200.0;
-            let x = (f64::from(point.x) - center_x) / center_x;
-            let y = (f64::from(point.y) - center_y) / center_y;
-            let dist2_sq = 1.0 - x.powi(2) - y.powi(2);
+            let grad2 = {
+                let dist = 180.0;
+                let x = center_x + dist * angle1.cos();
+                let y = center_y + dist * angle1.sin();
 
-            // Add another point, inverted
-            let center_x = (center_x + 100.0) * 1.5;
-            let center_y = center_y + 400.0;
-            let x = (f64::from(point.x) - center_x) / center_x;
-            let y = (f64::from(point.y) - center_y) / center_y;
-            let dist3_sq = 1.0 - x.powi(2) - y.powi(2);
+                let dx = (f64::from(point.x) - x) / scale;
+                let dy = (f64::from(point.y) - y) / scale;
+
+                1.0 - dx.powi(2) - dy.powi(2)
+            };
+
+            // And another point
+            let grad3 = {
+                let dist = 300.0;
+                let x = center_x + dist * angle1.cos();
+                let y = center_y + dist * angle1.sin();
+
+                let dx = (f64::from(point.x) - x) / scale;
+                let dy = (f64::from(point.y) - y) / scale;
+
+                dx.powi(2) + dy.powi(2)
+            };
 
             // Now merge them into a single gradient
-            let mut gradient = dist_sq.max(dist2_sq * 0.85).max(dist3_sq * 0.5);
+            let mut gradient = grad1.max(grad2 * 0.85).min(grad3.powi(3) + 0.45);
             gradient = gradient.clamp(0.0, 1.0);
 
             // Get a noise value, and "pull" it up
             let mut height = noise.get_noise(x as f32, y as f32) as f64;
             height = height.lerp(0.5, 0.5);
-            // Lerp it towards a point below sea level, using our squared distance as the t-value
-            height = height.lerp(-0.2, gradient);
+            // Lerp it towards a point below sea level, using our gradient as the t-value
+            height = height.lerp(-0.2, 1.0 - gradient);
 
             height
         }
 
         let max_x = f64::from(img_x);
         let max_y = f64::from(img_y);
+
+        let angle1 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2
+        let angle2 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2
 
         let mut seen = vec![false; map.delaunay.triangles.len()];
         for e in 0..map.delaunay.triangles.len() {
@@ -253,7 +267,7 @@ fn main() {
                 }
                 let sum: f64 = vertices
                     .iter()
-                    .map(|p| get_height(&p, center_x, center_y, &fbm))
+                    .map(|p| get_height(&p, [max_x, max_y], &fbm, angle1, angle2))
                     .sum();
 
                 let height = sum / count;
