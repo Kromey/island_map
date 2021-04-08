@@ -8,6 +8,7 @@ use rand_xoshiro::Xoshiro256StarStar;
 
 mod voronoi;
 use voronoi::{Biome, Voronoi};
+pub mod river;
 
 const SEA_LEVEL: f64 = 0.0;
 
@@ -107,19 +108,15 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
 
     println!("\t\tDrawing rivers...");
     for river in vor.rivers.iter() {
-        let mut prev = {
-            let delaunator::Point{ x, y } = vor.points[river[0]];
-            (x as f32, y as f32)
-        };
-        for &p in river.iter().skip(1) {
-            let delaunator::Point{ x, y } = vor.points[p];
+        for (p1, p2) in river.segments() {
+            let delaunator::Point{ x, y } = vor.points[p1];
+            let prev = (x as f32, y as f32);
+            let delaunator::Point{ x, y } = vor.points[p2];
             let current = (x as f32, y as f32);
             draw_line_segment_mut(&mut img, prev, current, image::Rgb([0_u8, 0, 0]));
-
-            prev = current;
         }
 
-        let (x, y) = prev;
+        let delaunator::Point{ x, y } = vor.points[river.mouth()];
         draw_filled_circle_mut(&mut img, (x as i32, y as i32), 2, image::Rgb([0_u8, 0, 0]));
     }
 
@@ -454,8 +451,12 @@ fn main() {
                 }
             })
             .collect();
+
+        // From a random sampling of high ground, create rivers from each by flowing downhill
         let amount = usize::min(sources.len() / 5, 17);
         let (starts, _) = sources.partial_shuffle(&mut rng, amount);
+        
+        let mut rivers = Vec::new();
         for start in starts.into_iter() {
             let mut river = Vec::new();
 
@@ -477,7 +478,7 @@ fn main() {
                 {
                     // Make sure it's lower than us
                     if map.heightmap[p] > map.heightmap[point] {
-                        // TODO: Need to actually do something with these
+                        // We'll handle these later
                         break;
                     } else {
                         point = p;
@@ -495,10 +496,26 @@ fn main() {
                 }
             }
 
+            // Cull too-short rivers
             if river.len() > 3 {
-                map.rivers.push(river);
+                rivers.push(river);
             }
         }
+
+        // Sort rivers so that we start with the longest
+        rivers.sort_unstable_by_key(|river| river.len());
+        for mut river in rivers {
+            // Rivers are in source-to-mouth order, reverse for mouth-to-source
+            river.reverse();
+            if let Some(parent_river) = map.rivers.iter_mut().find(|r| r.mouth() == river[0]) {
+                // This river's part of an existing network, add it as a branch
+                parent_river.add_branch(river);
+            } else {
+                // New river network
+                map.rivers.push(river.into());
+            }
+        }
+        println!("\tCreated {} river networks", map.rivers.len());
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);

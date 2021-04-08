@@ -1,6 +1,7 @@
 use delaunator::{Point, Triangulation};
 
 use fast_poisson::Poisson2D;
+use super::river::River;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Biome {
@@ -29,7 +30,7 @@ pub struct Voronoi {
     /// Assigned biome of the corresponding cell
     pub biomes: Vec<Biome>,
     /// Rivers as a series of point indexes
-    pub rivers: Vec<Vec<usize>>,
+    pub rivers: Vec<River>,
     /// Mapping for point indexes to an incoming halfedge
     point_halfedges: Vec<usize>,
 }
