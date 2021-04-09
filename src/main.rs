@@ -117,7 +117,8 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
         }
 
         let delaunator::Point{ x, y } = vor.points[river.mouth()];
-        draw_filled_circle_mut(&mut img, (x as i32, y as i32), 2, image::Rgb([0_u8, 0, 0]));
+        let radius = 2 * river.order().0 as i32;
+        draw_filled_circle_mut(&mut img, (x.round() as i32, y.round() as i32), radius, image::Rgb([0_u8, 0, 0]));
     }
 
     /*println!("\t\tDrawing Voronoi edges...");
