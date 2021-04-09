@@ -26,7 +26,7 @@ impl AddAssign for Strahler {
 
 impl Default for Strahler {
     fn default() -> Self {
-        Strahler(1)
+        Strahler(0)
     }
 }
 
@@ -78,6 +78,29 @@ impl River {
         );
 
         self.update_order(split_idx);
+    }
+
+    pub fn prune(&mut self) -> bool {
+        if self.order() < Strahler(1) {
+            return false;
+        }
+
+        // Prune all 0th-order river segments
+        self.order.retain(|&s| s > Strahler(0));
+        self.river.truncate(self.order.len());
+
+        // If we're too short now, there's no reason to exist anymore
+        if self.river.len() < 3 {
+            return false;
+        }
+
+        // Now clean up our branches
+        self.branches.retain(|(_, branch)| branch.order() > Strahler(0));
+        for (_, branch) in self.branches.iter_mut() {
+            branch.prune();
+        }
+
+        true
     }
     
     pub fn segments(&self) -> Vec<(usize, usize)> {

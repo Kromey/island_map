@@ -446,7 +446,7 @@ fn main() {
             .iter()
             .enumerate()
             .filter_map(|(idx, height)| {
-                if *height >= 0.8 {
+                if *height >= 0.3 {
                     Some(idx)
                 } else {
                     None
@@ -455,7 +455,7 @@ fn main() {
             .collect();
 
         // From a random sampling of high ground, create rivers from each by flowing downhill
-        let amount = usize::min(sources.len() / 5, 17);
+        let amount = sources.len(); //usize::min(sources.len() / 5, 17);
         let (starts, _) = sources.partial_shuffle(&mut rng, amount);
         
         let mut rivers = Vec::new();
@@ -498,10 +498,7 @@ fn main() {
                 }
             }
 
-            // Cull too-short rivers
-            if river.len() > 3 {
-                rivers.push(river);
-            }
+            rivers.push(river);
         }
 
         // Sort rivers so that we start with the longest
@@ -517,10 +514,14 @@ fn main() {
                 map.rivers.push(river.into());
             }
         }
+        map.rivers = map.rivers.into_iter().filter_map(|mut river| {
+            if river.prune() {
+                Some(river)
+            } else {
+                None
+            }
+        }).collect();
         println!("\tCreated {} river networks", map.rivers.len());
-        for river in map.rivers.iter() {
-            println!("\t\t({}) {:?}", river.order().0, river.segments());
-        }
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
