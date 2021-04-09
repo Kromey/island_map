@@ -3,7 +3,7 @@ use std::ops::{Add, AddAssign};
 /// Strahler Number
 /// 
 /// https://en.wikipedia.org/wiki/Strahler_number#River_networks
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Strahler(pub usize);
 
 impl Add for Strahler {
@@ -20,7 +20,7 @@ impl Add for Strahler {
 
 impl AddAssign for Strahler {
     fn add_assign(&mut self, other: Self) {
-        *self = self.clone() + other;
+        *self = *self + other;
     }
 }
 
@@ -110,14 +110,24 @@ impl River {
         let mut upstream = *self.order.get(to_idx + 1).unwrap_or(&Strahler(0));
 
         for (idx, order) in self.order.iter_mut().enumerate().take(to_idx + 1).rev() {
-            if let Some(branch) = self.branches.iter().filter_map(|(split_idx, branch)| {
+            let mut orders: Vec<_> = self.branches.iter().filter_map(|(split_idx, branch)| {
                 if *split_idx == idx {
                     Some(branch.order())
                 } else {
                     None
                 }
-            }).reduce(Add::add) {
-                upstream += branch;
+            }).collect();
+            if !orders.is_empty() {
+                orders.push(upstream);
+
+                // Sort our Strahler numbers in ascending order, then sum them.
+                // This will let e.g. two 1st-order rivers joining a 2nd-order become 3rd-order
+                // Because in Strahler terms, 1+1=2 and 2+2=3, but 2+1=2
+                // Technically not accurate per the definition of Strahler number, which holds that
+                // order i can only be achieved when two or more children are i-1
+                orders.sort();
+
+                upstream = orders.into_iter().reduce(Add::add).unwrap(); // We know it's not empty so this will never panic
             }
 
             *order = upstream;

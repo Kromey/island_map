@@ -2,6 +2,7 @@ use bracket_noise::prelude::*;
 use imageproc::drawing::{draw_filled_circle_mut, draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
+use std::cmp::Reverse;
 use std::time::Instant;
 use rand::{prelude::*, seq::SliceRandom};
 use rand_xoshiro::Xoshiro256StarStar;
@@ -504,7 +505,7 @@ fn main() {
         }
 
         // Sort rivers so that we start with the longest
-        rivers.sort_unstable_by_key(|river| river.len());
+        rivers.sort_unstable_by_key(|river| Reverse(river.len()));
         for mut river in rivers {
             // Rivers are in source-to-mouth order, reverse for mouth-to-source
             river.reverse();
@@ -517,6 +518,9 @@ fn main() {
             }
         }
         println!("\tCreated {} river networks", map.rivers.len());
+        for river in map.rivers.iter() {
+            println!("\t\t({}) {:?}", river.order().0, river.segments());
+        }
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
