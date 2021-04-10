@@ -12,6 +12,15 @@ pub enum Biome {
     Beach,
 }
 
+impl Biome {
+    pub fn is_water(&self) -> bool {
+        match self {
+            Self::Ocean | Self::Coast | Self::Lagoon | Self::Lake => true,
+            _ => false,
+        }
+    }
+}
+
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
 /// The implementation of the Voronoi graph from its Delaunay triangulation is based on the article

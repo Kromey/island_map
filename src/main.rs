@@ -1,5 +1,5 @@
 use bracket_noise::prelude::*;
-use imageproc::drawing::{draw_filled_circle_mut, draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
+use imageproc::drawing::{draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
 use std::cmp::Reverse;
@@ -10,6 +10,7 @@ use rand_xoshiro::Xoshiro256StarStar;
 mod voronoi;
 use voronoi::{Biome, Voronoi};
 pub mod river;
+pub mod lake;
 
 const SEA_LEVEL: f64 = 0.0;
 
@@ -117,9 +118,9 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             draw_line_segment_mut(&mut img, prev, current, image::Rgb([0_u8, 0, 0]));
         }
 
-        let delaunator::Point{ x, y } = vor.points[river.mouth()];
-        let radius = 2 * river.order().0 as i32;
-        draw_filled_circle_mut(&mut img, (x.round() as i32, y.round() as i32), radius, image::Rgb([0_u8, 0, 0]));
+        //let delaunator::Point{ x, y } = vor.points[river.mouth()];
+        //let radius = 2 * river.order().0 as i32;
+        //draw_filled_circle_mut(&mut img, (x.round() as i32, y.round() as i32), radius, image::Rgb([0_u8, 0, 0]));
     }
 
     /*println!("\t\tDrawing Voronoi edges...");
@@ -489,9 +490,8 @@ fn main() {
                     river.push(point);
     
                     // Check if we've reached water
-                    match map.biomes[point] {
-                        Biome::Coast | Biome::Lake | Biome::Lagoon | Biome::Ocean => break,
-                        _ => {},
+                    if map.biomes[point].is_water() {
+                        break;
                     }
                 } else {
                     break;
@@ -522,6 +522,21 @@ fn main() {
             }
         }).collect();
         println!("\tCreated {} river networks", map.rivers.len());
+
+        let mut lakes = Vec::new();
+        // Create lakes wherever rivers end within the island
+        for mouth in map.rivers.iter().filter_map(|river| {
+            if map.biomes[river.mouth()].is_water() {
+                None
+            } else {
+                Some(river.mouth())
+            }
+        }) {
+            lakes.push(lake::Lake::new_at(mouth, &map));
+        }
+        for lake in lakes {
+            lake.apply(&mut map);
+        }
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
