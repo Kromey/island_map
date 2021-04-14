@@ -12,14 +12,14 @@ pub struct Lake {
 impl Lake {
     pub fn new_at(start: usize, map: &Voronoi) -> Self {
         let mut lake = Self {
-            height: map.heightmap[start],
+            height: map.cells[start].height,
             cells: vec![start],
             order: Default::default(),
         };
 
         loop {
             let neighbor = lake.lowest_neighbor(map);
-            let neighbor_height = map.heightmap[neighbor];
+            let neighbor_height = map.cells[neighbor].height;
             
             if neighbor_height < lake.height {
                 // We've expanded to reach a lower-height neighbor, we're done!
@@ -41,7 +41,7 @@ impl Lake {
             .flat_map(|&cell| map.neighbors_of_point(cell))
             .filter_map(|neighbor| {
                 if !self.cells.contains(&neighbor) {
-                    Some((neighbor, map.heightmap[neighbor]))
+                    Some((neighbor, map.cells[neighbor].height))
                 } else {
                     None
                 }
@@ -53,8 +53,8 @@ impl Lake {
 
     pub fn apply(&self, map: &mut Voronoi) {
         for &cell in self.cells.iter() {
-            map.heightmap[cell] = self.height;
-            map.biomes[cell] = Biome::Lake;
+            map.cells[cell].height = self.height;
+            map.cells[cell].biome = Biome::Lake;
         }
     }
 }

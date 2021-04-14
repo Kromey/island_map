@@ -73,7 +73,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
             //println!("{:?}", vertices);
 
             let start = Instant::now();
-            let fill = match vor.biomes[p] {
+            let fill = match vor.cells[p].biome {
                 Biome::Coast => coastal_waters,
                 Biome::Lake => lake,
                 Biome::Ocean => ocean,
@@ -81,9 +81,9 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
                 Biome::Beach => {
                     //sand
                     image::Rgb([
-                        108.0.lerp(255., vor.heightmap[p]) as u8,
-                        152.0.lerp(255., vor.heightmap[p]) as u8,
-                        95.0.lerp(255., vor.heightmap[p]) as u8,
+                        108.0.lerp(255., vor.cells[p].height) as u8,
+                        152.0.lerp(255., vor.cells[p].height) as u8,
+                        95.0.lerp(255., vor.cells[p].height) as u8,
                         ])
                 },
                 //_ => image::Rgb([0u8, 0, 0]),
@@ -111,9 +111,9 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     println!("\t\tDrawing rivers...");
     for river in vor.rivers.iter() {
         for (p1, p2) in river.segments() {
-            let delaunator::Point{ x, y } = vor.points[p1];
+            let delaunator::Point{ x, y } = vor.point(p1);
             let prev = (x as f32, y as f32);
-            let delaunator::Point{ x, y } = vor.points[p2];
+            let delaunator::Point{ x, y } = vor.point(p2);
             let current = (x as f32, y as f32);
             draw_line_segment_mut(&mut img, prev, current, image::Rgb([0_u8, 0, 0]));
         }
@@ -162,7 +162,7 @@ fn main() {
         let start = Instant::now();
         let mut map = Voronoi::new(seed, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.points.len());
+        println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.cells.len());
         map_duration += duration;
 
         println!("Generating coastline...");
@@ -290,7 +290,7 @@ fn main() {
 
                 let height = sum / count;
 
-                map.heightmap[point_idx] = height;
+                map.cells[point_idx].height = height;
             }
         }
 
@@ -302,12 +302,12 @@ fn main() {
         println!("Defining waterlines...");
 
         // Initial pass just to define land/sea border; we use Lake instead of Ocean for now
-        for i in 0..map.points.len() {
-            let delaunator::Point{x,y} = map.points[i];
-            map.biomes[i] = if map.heightmap[i] < SEA_LEVEL {
+        for cell in map.cells.iter_mut() {
+            let voronoi::Cell{x,y,..} = cell;
+            cell.biome = if cell.height < SEA_LEVEL {
                 Biome::Lake
             } else {
-                if x < 10. || x > f64::from(img_x) - 10. || y < 10. || y > f64::from(img_y) - 10. {
+                if *x < 10. || *x > f64::from(img_x) - 10. || *y < 10. || *y > f64::from(img_y) - 10. {
                     Biome::Lake
                 } else {
                     Biome::Beach
@@ -322,9 +322,9 @@ fn main() {
         while !active.is_empty() {
             let p = active.pop().unwrap();
 
-            map.biomes[p] = {
+            map.cells[p].biome = {
                 // Check adjacent cells if they're land
-                if map.neighbors_of_point(p).into_iter().any(|p| map.heightmap[p] > SEA_LEVEL ) {
+                if map.neighbors_of_point(p).into_iter().any(|p| map.cells[p].height > SEA_LEVEL ) {
                     Biome::Coast
                 } else {
                     Biome::Ocean
@@ -332,11 +332,11 @@ fn main() {
             };
 
             // Append all neighboring "Lake" cells
-            active.extend(map.neighbors_of_point(p).into_iter().filter(|&p| map.biomes[p] == Biome::Lake ));
+            active.extend(map.neighbors_of_point(p).into_iter().filter(|&p| map.cells[p].biome == Biome::Lake ));
         }
 
         // Now flood-fill again, looking for "real" open Ocean and Ocean-adjacent coasts
-        let mut real_ocean = vec![false; map.points.len()];
+        let mut real_ocean = vec![false; map.cells.len()];
         let mut active = vec![first];
         while !active.is_empty() {
             let p = active.pop().unwrap();
@@ -344,18 +344,18 @@ fn main() {
             real_ocean[p] = true;
 
             // Append all neighboring Ocean or Coast cells, IF the current cell is Ocean
-            if map.biomes[p] == Biome::Ocean {
+            if map.cells[p].biome == Biome::Ocean {
                 active.extend(
                     map
                         .neighbors_of_point(p)
                         .into_iter()
-                        .filter(|&p| (map.biomes[p] == Biome::Coast || map.biomes[p] == Biome::Ocean) && !real_ocean[p] )
+                        .filter(|&p| (map.cells[p].biome == Biome::Coast || map.cells[p].biome == Biome::Ocean) && !real_ocean[p] )
                 );
             }
         }
         // Now we'll flood-fill Ocean/Coast that isn't "real", but only from disconnected Ocean
         active = real_ocean.iter().enumerate().filter_map(|(i, is_real)| {
-            if !is_real && map.biomes[i] == Biome::Ocean {
+            if !is_real && map.cells[i].biome == Biome::Ocean {
                 Some(i)
             } else {
                 None
@@ -364,14 +364,14 @@ fn main() {
         while !active.is_empty() {
             let p = active.pop().unwrap();
             
-            map.biomes[p] = Biome::Lagoon;
+            map.cells[p].biome = Biome::Lagoon;
 
             // Append all neighboring Coast cells that aren't "real"
             active.extend(
                 map
                     .neighbors_of_point(p)
                     .into_iter()
-                    .filter(|&p| map.biomes[p] == Biome::Coast && !real_ocean[p] )
+                    .filter(|&p| map.cells[p].biome == Biome::Coast && !real_ocean[p] )
             );
         }
 
@@ -384,14 +384,14 @@ fn main() {
         let start = Instant::now();
         println!("Generating heightmap...");
 
-        let mut new_heights = vec![f64::MAX; map.heightmap.len()];
+        let mut new_heights = vec![f64::MAX; map.cells.len()];
         let mut changed = true;
         while changed {
             changed = false;
-            for i in 0..map.heightmap.len() {
+            for i in 0..map.cells.len() {
                 let my_height = new_heights[i];
 
-                if map.biomes[i] == Biome::Ocean || map.biomes[i] == Biome::Coast || map.biomes[i] == Biome::Lagoon {
+                if map.cells[i].biome.is_water() {
                     new_heights[i] = 0.0;
                 } else {
                     let start = my_height;
@@ -400,7 +400,7 @@ fn main() {
                         .filter(|&&p| new_heights[p] > -0.1)
                         .fold(start, |min, &p| min.min(new_heights[p]) );
 
-                    let dist = if map.biomes[i] == Biome::Lake {
+                    let dist = if map.cells[i].biome == Biome::Lake {
                         min
                     } else {
                         min + 1.0
@@ -423,7 +423,7 @@ fn main() {
         for (i, height) in new_heights.iter().enumerate() {
             if *height > 0.0 {
                 let height = (*height / max_height).powi(2);
-                map.heightmap[i] = map.heightmap[i].lerp(1.0, height);
+                map.cells[i].height = map.cells[i].height.lerp(1.0, height);
             }
         }
 
@@ -436,18 +436,18 @@ fn main() {
         println!("Creating rivers...");
 
         // Start by erasing Lakes; we'll add some later
-        for biome in map.biomes.iter_mut() {
-            if *biome == Biome::Lake {
-                *biome = Biome::Beach;
+        for cell in map.cells.iter_mut() {
+            if cell.biome == Biome::Lake {
+                cell.biome = Biome::Beach;
             }
         }
 
         // Finding the high polygons; rivers will start here
-        let mut sources: Vec<_> = map.heightmap
+        let mut sources: Vec<_> = map.cells
             .iter()
             .enumerate()
-            .filter_map(|(idx, height)| {
-                if *height >= 0.3 {
+            .filter_map(|(idx, cell)| {
+                if cell.height >= 0.3 {
                     Some(idx)
                 } else {
                     None
@@ -472,7 +472,7 @@ fn main() {
                     .into_iter()
                     .filter(|p| !river.contains(p))
                     .min_by(|&p1, &p2| {
-                        if map.heightmap[p1] < map.heightmap[p2] {
+                        if map.cells[p1].height < map.cells[p2].height {
                             std::cmp::Ordering::Less
                         } else {
                             std::cmp::Ordering::Greater
@@ -480,7 +480,7 @@ fn main() {
                     })
                 {
                     // Make sure it's lower than us
-                    if map.heightmap[p] > map.heightmap[point] {
+                    if map.cells[p].height > map.cells[point].height {
                         // We'll handle these later
                         break;
                     } else {
@@ -490,7 +490,7 @@ fn main() {
                     river.push(point);
     
                     // Check if we've reached water
-                    if map.biomes[point].is_water() {
+                    if map.cells[point].biome.is_water() {
                         break;
                     }
                 } else {
@@ -526,7 +526,7 @@ fn main() {
         let mut lakes = Vec::new();
         // Create lakes wherever rivers end within the island
         for mouth in map.rivers.iter().filter_map(|river| {
-            if map.biomes[river.mouth()].is_water() {
+            if map.cells[river.mouth()].biome.is_water() {
                 None
             } else {
                 Some(river.mouth())

@@ -21,6 +21,14 @@ impl Biome {
     }
 }
 
+pub struct Cell {
+    pub x: f64,
+    pub y: f64,
+    pub height: f64,
+    pub biome: Biome,
+    halfedge: usize,
+}
+
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
 /// The implementation of the Voronoi graph from its Delaunay triangulation is based on the article
@@ -30,18 +38,12 @@ pub struct Voronoi {
     pub width: u32,
     /// Height of the map
     pub height: u32,
-    /// The "center" points used to define the Voronoi cells
-    pub points: Vec<Point>,
+    /// The Voronoi polygon cells
+    pub cells: Vec<Cell>,
     /// The Delaunay triangulation of the Voronoi map
     pub delaunay: Triangulation,
-    /// Height of the corresponding cell
-    pub heightmap: Vec<f64>,
-    /// Assigned biome of the corresponding cell
-    pub biomes: Vec<Biome>,
     /// Rivers as a series of point indexes
     pub rivers: Vec<River>,
-    /// Mapping for point indexes to an incoming halfedge
-    point_halfedges: Vec<usize>,
 }
 
 impl Voronoi {
@@ -63,33 +65,36 @@ impl Voronoi {
             .collect();
 
         let delaunay = delaunator::triangulate(&points).unwrap();
+
+        // Convert our Vec<Point> into Vec<Cell>
+        let mut cells: Vec<Cell> = points
+            .into_iter()
+            .map(|p| Cell {
+                x: p.x,
+                y: p.y,
+                height: 0.0,
+                biome: Biome::Ocean,
+                halfedge: usize::MAX,
+            })
+            .collect();
         
-        let biomes = vec![Biome::Ocean; points.len()];
-        let heightmap = vec![0.0; points.len()];
         let rivers = Vec::new();
 
         // Build an index of points to an incoming half-edge; useful to find the point's cell
         // and neighbors later
-        let point_halfedges = {
-            let mut index = vec![usize::MAX; points.len()];
-            for e in 0..delaunay.triangles.len() {
-                let edge = delaunay.triangles[delaunator::next_halfedge(e)];
-                if index[edge] == usize::MAX {
-                    index[edge] = e;
-                }
+        for e in 0..delaunay.triangles.len() {
+            let edge = delaunay.triangles[delaunator::next_halfedge(e)];
+            if cells[edge].halfedge == usize::MAX {
+                cells[edge].halfedge = e;
             }
-            index
-        };
+        }
 
         Voronoi {
             width,
             height,
-            points,
+            cells,
             delaunay,
-            heightmap,
-            biomes,
             rivers,
-            point_halfedges,
         }
     }
 
@@ -170,7 +175,14 @@ impl Voronoi {
     /// Find the circumcenter of the given triangle
     pub fn triangle_center(&self, triangle: usize) -> Point {
         let p = self.points_of_triangle(triangle);
-        self.circumcenter(&self.points[p[0]], &self.points[p[1]], &self.points[p[2]])
+        self.circumcenter(&self.point(p[0]), &self.point(p[1]), &self.point(p[2]))
+    }
+
+    pub fn point(&self, cell: usize) -> Point {
+        Point {
+            x: self.cells[cell].x,
+            y: self.cells[cell].y,
+        }
     }
 
     /// Find the edges that point in to the specified start point.
@@ -198,7 +210,7 @@ impl Voronoi {
 
     /// Find the points in polygons that neighbor the given point
     pub fn neighbors_of_point(&self, point: usize) -> Vec<usize> {
-        self.edges_around_point(self.point_halfedges[point])
+        self.edges_around_point(self.cells[point].halfedge)
             .into_iter()
             .map(|edge| self.delaunay.triangles[edge])
             .collect()
