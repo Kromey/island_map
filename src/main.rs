@@ -111,9 +111,9 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     println!("\t\tDrawing rivers...");
     for river in vor.rivers.iter() {
         for (p1, p2) in river.segments() {
-            let delaunator::Point{ x, y } = vor.point(p1);
+            let delaunator::Point{ x, y } = vor.cells[p1].as_point();
             let prev = (x as f32, y as f32);
-            let delaunator::Point{ x, y } = vor.point(p2);
+            let delaunator::Point{ x, y } = vor.cells[p2].as_point();
             let current = (x as f32, y as f32);
             draw_line_segment_mut(&mut img, prev, current, image::Rgb([0_u8, 0, 0]));
         }

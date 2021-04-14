@@ -29,6 +29,27 @@ pub struct Cell {
     halfedge: usize,
 }
 
+impl Cell {
+    pub fn as_point(&self) -> Point {
+        Point {
+            x: self.x,
+            y: self.y,
+        }
+    }
+}
+
+impl From<Point> for Cell {
+    fn from(point: Point) -> Cell {
+        Cell {
+            x: point.x,
+            y: point.y,
+            height: 0.0,
+            biome: Biome::Ocean,
+            halfedge: usize::MAX,
+        }
+    }
+}
+
 /// A map represented by Voronoi polygons built from the Delaunay triangulation of random points.
 ///
 /// The implementation of the Voronoi graph from its Delaunay triangulation is based on the article
@@ -69,13 +90,7 @@ impl Voronoi {
         // Convert our Vec<Point> into Vec<Cell>
         let mut cells: Vec<Cell> = points
             .into_iter()
-            .map(|p| Cell {
-                x: p.x,
-                y: p.y,
-                height: 0.0,
-                biome: Biome::Ocean,
-                halfedge: usize::MAX,
-            })
+            .map(|p| p.into())
             .collect();
         
         let rivers = Vec::new();
@@ -175,14 +190,7 @@ impl Voronoi {
     /// Find the circumcenter of the given triangle
     pub fn triangle_center(&self, triangle: usize) -> Point {
         let p = self.points_of_triangle(triangle);
-        self.circumcenter(&self.point(p[0]), &self.point(p[1]), &self.point(p[2]))
-    }
-
-    pub fn point(&self, cell: usize) -> Point {
-        Point {
-            x: self.cells[cell].x,
-            y: self.cells[cell].y,
-        }
+        self.circumcenter(&self.cells[p[0]].as_point(), &self.cells[p[1]].as_point(), &self.cells[p[2]].as_point())
     }
 
     /// Find the edges that point in to the specified start point.
