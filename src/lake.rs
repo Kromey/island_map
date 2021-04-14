@@ -14,7 +14,7 @@ impl Lake {
         let mut lake = Self {
             height: map.heightmap[start],
             cells: vec![start],
-            order: Strahler(1),
+            order: Default::default(),
         };
 
         loop {

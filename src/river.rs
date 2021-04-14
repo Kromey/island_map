@@ -4,7 +4,7 @@ use std::ops::{Add, AddAssign};
 /// 
 /// https://en.wikipedia.org/wiki/Strahler_number#River_networks
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Strahler(pub usize);
+pub struct Strahler(usize);
 
 impl Add for Strahler {
     type Output = Self;
@@ -27,6 +27,18 @@ impl AddAssign for Strahler {
 impl Default for Strahler {
     fn default() -> Self {
         Strahler(0)
+    }
+}
+
+impl From<usize> for Strahler {
+    fn from(from: usize) -> Strahler {
+        Strahler(from)
+    }
+}
+
+impl From<Strahler> for usize {
+    fn from(from: Strahler) -> usize {
+        from.0
     }
 }
 
