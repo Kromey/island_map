@@ -9,8 +9,8 @@ use rand_xoshiro::Xoshiro256StarStar;
 
 mod voronoi;
 use voronoi::{Biome, Voronoi};
-pub mod river;
-pub mod lake;
+pub mod impluvium;
+pub use impluvium::{river, lake};
 
 const SEA_LEVEL: f64 = 0.0;
 

@@ -1,11 +1,11 @@
-use super::Biome;
-use super::river::Strahler;
-use super::voronoi::Voronoi;
+use crate::Biome;
+use super::strahler::Strahler;
+use crate::voronoi::Voronoi;
 
-#[allow(dead_code)]
 pub struct Lake {
     cells: Vec<usize>,
     height: f64,
+    #[allow(dead_code)]
     order: Strahler,
 }
 

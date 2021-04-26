@@ -1,46 +1,4 @@
-use std::ops::{Add, AddAssign};
-
-/// Strahler Number
-/// 
-/// https://en.wikipedia.org/wiki/Strahler_number#River_networks
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Strahler(usize);
-
-impl Add for Strahler {
-    type Output = Self;
-
-    fn add(self, other: Self) -> Self {
-        if self == other {
-            Self(self.0 + 1)
-        } else {
-            Self(self.0.max(other.0))
-        }
-    }
-}
-
-impl AddAssign for Strahler {
-    fn add_assign(&mut self, other: Self) {
-        *self = *self + other;
-    }
-}
-
-impl Default for Strahler {
-    fn default() -> Self {
-        Strahler(0)
-    }
-}
-
-impl From<usize> for Strahler {
-    fn from(from: usize) -> Strahler {
-        Strahler(from)
-    }
-}
-
-impl From<Strahler> for usize {
-    fn from(from: Strahler) -> usize {
-        from.0
-    }
-}
+use super::strahler::Strahler;
 
 #[derive(Debug)]
 pub struct River {
@@ -93,12 +51,12 @@ impl River {
     }
 
     pub fn prune(&mut self) -> bool {
-        if self.order() < Strahler(1) {
+        if self.order() < Strahler::from(1) {
             return false;
         }
 
         // Prune all 0th-order river segments
-        self.order.retain(|&s| s > Strahler(0));
+        self.order.retain(|&s| s > Strahler::from(0));
         self.river.truncate(self.order.len());
 
         // If we're too short now, there's no reason to exist anymore
@@ -107,7 +65,7 @@ impl River {
         }
 
         // Now clean up our branches
-        self.branches.retain(|(_, branch)| branch.order() > Strahler(0));
+        self.branches.retain(|(_, branch)| branch.order() > Strahler::from(0));
         for (_, branch) in self.branches.iter_mut() {
             branch.prune();
         }
@@ -142,7 +100,7 @@ impl River {
     }
 
     fn update_order(&mut self, to_idx: usize) {
-        let mut upstream = *self.order.get(to_idx + 1).unwrap_or(&Strahler(0));
+        let mut upstream = *self.order.get(to_idx + 1).unwrap_or(&Strahler::from(0));
 
         for (idx, order) in self.order.iter_mut().enumerate().take(to_idx + 1).rev() {
             let mut orders: Vec<_> = self.branches.iter().filter_map(|(split_idx, branch)| {
@@ -162,7 +120,7 @@ impl River {
                 // order i can only be achieved when two or more children are i-1
                 orders.sort();
 
-                upstream = orders.into_iter().reduce(Add::add).unwrap(); // We know it's not empty so this will never panic
+                upstream = orders.into_iter().reduce(std::ops::Add::add).unwrap(); // We know it's not empty so this will never panic
             }
 
             *order = upstream;
