@@ -14,6 +14,33 @@ pub use impluvium::{river, lake};
 
 const SEA_LEVEL: f64 = 0.0;
 
+fn draw_noise(noise: &FastNoise, img_x: u32, img_y: u32, i: u64, angle1: f64, angle2: f64) {
+    let mut img = image::ImageBuffer::new(img_x, img_y);
+    let img_dimensions = [img_x as f64, img_y as f64];
+
+    let ocean = image::Rgb([70_u8, 107, 159]);
+
+    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(img_x, img_y), ocean);
+
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let height = get_height(&delaunator::Point{ x: x as f64, y: y as f64}, img_dimensions, noise, angle1, angle2);
+
+        let color = if height <= SEA_LEVEL {
+            ocean
+        } else {
+            image::Rgb([
+                108.0.lerp(255., height) as u8,
+                152.0.lerp(255., height) as u8,
+                95.0.lerp(255., height) as u8,
+                ])
+        };
+
+        *pixel = color;
+    }
+
+    img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();
+}
+
 fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
     let _sand = image::Rgb([160_u8, 144, 119]);
@@ -149,6 +176,73 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     img.save(format!("map_{:02}.png", i + 1)).unwrap();
 }
 
+fn get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, angle2: f64) -> f64 {
+    let scale = dimensions[0].max(dimensions[1]) / 3.0;
+
+    let center_x = dimensions[0] / 2.0;
+    let center_y = dimensions[1] / 2.0;
+
+    // For our first point we just use the center
+    let x = (f64::from(point.x) - center_x) / scale;
+    let y = (f64::from(point.y) - center_y) / scale;
+    // Use the distance function, but squared to give greater dropoff
+    let grad1 = 1.0 - x.powi(2) - y.powi(2);
+
+    // Add a second point
+    let grad2 = {
+        let dist = 180.0;
+        let x = center_x + dist * angle1.cos();
+        let y = center_y + dist * angle1.sin();
+
+        let dx = (f64::from(point.x) - x) / scale;
+        let dy = (f64::from(point.y) - y) / scale;
+
+        1.0 - dx.powi(2) - dy.powi(2)
+    };
+
+    // Add a third point, sometimes equal-but-opposite, sometimes on angle2
+    let grad2_2 = {
+        let dist = 180.0;
+        let angle1 = match (angle1 * 100.0).round() as usize % 3 {
+            0 => angle2,
+            1 => angle1 + std::f64::consts::PI,
+            2 => angle1.min(angle2) + (angle1 - angle2).abs() / 2.0,
+            _ => unreachable!(),
+        };
+        let x = center_x + dist * angle1.cos();
+        let y = center_y + dist * angle1.sin();
+
+        let dx = (f64::from(point.x) - x) / scale;
+        let dy = (f64::from(point.y) - y) / scale;
+
+        1.0 - dx.powi(2) - dy.powi(2)
+    };
+
+    // And another point
+    let grad3 = {
+        let dist = 300.0;
+        let x = center_x + dist * angle2.cos();
+        let y = center_y + dist * angle2.sin();
+
+        let dx = (f64::from(point.x) - x) / scale;
+        let dy = (f64::from(point.y) - y) / scale;
+
+        dx.powi(2) + dy.powi(2)
+    };
+
+    // Now merge them into a single gradient
+    let mut gradient = grad1.max(grad2 * 0.85).max(grad2_2 * 0.80).min(grad3.powi(3) + 0.45);
+    gradient = gradient.clamp(0.0, 1.0);
+
+    // Get a noise value, and "pull" it up
+    let mut height = noise.get_noise(x as f32, y as f32) as f64;
+    height = height.lerp(0.5, 0.5);
+    // Lerp it towards a point below sea level, using our gradient as the t-value
+    height = height.lerp(-0.2, 1.0 - gradient);
+
+    height
+}
+
 fn main() {
     let img_x = 800;
     let img_y = 800;
@@ -179,120 +273,14 @@ fn main() {
         fbm.set_fractal_lacunarity(2.0);
         fbm.set_frequency(2.0);
 
-        fn get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, angle2: f64) -> f64 {
-            let scale = dimensions[0].max(dimensions[1]) / 3.0;
-
-            let center_x = dimensions[0] / 2.0;
-            let center_y = dimensions[1] / 2.0;
-
-            // For our first point we just use the center
-            let x = (f64::from(point.x) - center_x) / scale;
-            let y = (f64::from(point.y) - center_y) / scale;
-            // Use the distance function, but squared to give greater dropoff
-            let grad1 = 1.0 - x.powi(2) - y.powi(2);
-
-            // Add a second point
-            let grad2 = {
-                let dist = 180.0;
-                let x = center_x + dist * angle1.cos();
-                let y = center_y + dist * angle1.sin();
-
-                let dx = (f64::from(point.x) - x) / scale;
-                let dy = (f64::from(point.y) - y) / scale;
-
-                1.0 - dx.powi(2) - dy.powi(2)
-            };
-
-            // Add a third point, sometimes equal-but-opposite, sometimes on angle2
-            let grad2_2 = {
-                let dist = 180.0;
-                let angle1 = match (angle1 * 100.0).round() as usize % 3 {
-                    0 => angle2,
-                    1 => angle1 + std::f64::consts::PI,
-                    2 => angle1.min(angle2) + (angle1 - angle2).abs() / 2.0,
-                    _ => unreachable!(),
-                };
-                let x = center_x + dist * angle1.cos();
-                let y = center_y + dist * angle1.sin();
-
-                let dx = (f64::from(point.x) - x) / scale;
-                let dy = (f64::from(point.y) - y) / scale;
-
-                1.0 - dx.powi(2) - dy.powi(2)
-            };
-
-            // And another point
-            let grad3 = {
-                let dist = 300.0;
-                let x = center_x + dist * angle2.cos();
-                let y = center_y + dist * angle2.sin();
-
-                let dx = (f64::from(point.x) - x) / scale;
-                let dy = (f64::from(point.y) - y) / scale;
-
-                dx.powi(2) + dy.powi(2)
-            };
-
-            // Now merge them into a single gradient
-            let mut gradient = grad1.max(grad2 * 0.85).max(grad2_2 * 0.80).min(grad3.powi(3) + 0.45);
-            gradient = gradient.clamp(0.0, 1.0);
-
-            // Get a noise value, and "pull" it up
-            let mut height = noise.get_noise(x as f32, y as f32) as f64;
-            height = height.lerp(0.5, 0.5);
-            // Lerp it towards a point below sea level, using our gradient as the t-value
-            height = height.lerp(-0.2, 1.0 - gradient);
-
-            height
-        }
-
         let max_x = f64::from(img_x);
         let max_y = f64::from(img_y);
 
-        let angle1 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2
-        let angle2 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2
+        let angle1 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2π
+        let angle2 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2π
 
-        let mut seen = vec![false; map.delaunay.triangles.len()];
-        for e in 0..map.delaunay.triangles.len() {
-            let point_idx = map.delaunay.triangles[map.next_halfedge(e)];
-
-            if !seen[point_idx] {
-                seen[point_idx] = true;
-                let edges = map.edges_around_point(e);
-                let triangles: Vec<usize> = edges.iter().map(|&e| map.triangle_of_edge(e)).collect();
-                let mut vertices: Vec<delaunator::Point> = triangles
-                    .iter()
-                    .map(|&t| map.triangle_center(t) )
-                    .collect();
-                if vertices.iter().any(|delaunator::Point {x, y}| {
-                    *x < 0.0 || *x > max_x || *y < 0.0 || *y > max_y
-                })
-                {
-                    // Some of these get ridiculously far out of bounds, not sure how
-                    // Fortunately this only happens around the edges, so we can safely skip 'em
-                    continue;
-                }
-                vertices.dedup();
-                if vertices.first() == vertices.last() {
-                    vertices.pop();
-                }
-                
-                // Set the height of a cell to be the average of the heights of its corners
-                let count = vertices.len() as f64;
-                if count == 0.0 {
-                    // No vertices? Not sure how, but skip it regardless
-                    continue;
-                }
-                let sum: f64 = vertices
-                    .iter()
-                    .map(|p| get_height(&p, [max_x, max_y], &fbm, angle1, angle2))
-                    .sum();
-
-                let height = sum / count;
-
-                map.cells[point_idx].height = height;
-            }
-        }
+        draw_noise(&fbm, img_x, img_y, seed, angle1, angle2);
+        continue;
 
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
