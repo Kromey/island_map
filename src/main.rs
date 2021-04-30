@@ -11,19 +11,20 @@ mod voronoi;
 use voronoi::{Biome, Voronoi};
 pub mod impluvium;
 pub use impluvium::{river, lake};
+mod map;
+use map::Map;
 
 const SEA_LEVEL: f64 = 0.0;
 
-fn draw_noise(noise: &FastNoise, img_x: u32, img_y: u32, i: u64, angle1: f64, angle2: f64) {
-    let mut img = image::ImageBuffer::new(img_x, img_y);
-    let img_dimensions = [img_x as f64, img_y as f64];
+fn draw_noise(_noise: &FastNoise, map: &Map, i: u64) {
+    let mut img = image::ImageBuffer::new(map.width(), map.height());
 
     let ocean = image::Rgb([70_u8, 107, 159]);
 
-    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(img_x, img_y), ocean);
+    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(map.width(), map.height()), ocean);
 
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let height = get_height(&delaunator::Point{ x: x as f64, y: y as f64}, img_dimensions, noise, angle1, angle2);
+        let height = map.get_height(x as f64, y as f64);
 
         let color = if height <= SEA_LEVEL {
             ocean
@@ -41,7 +42,7 @@ fn draw_noise(noise: &FastNoise, img_x: u32, img_y: u32, i: u64, angle1: f64, an
     img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();
 }
 
-fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
+fn _draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
     let _sand = image::Rgb([160_u8, 144, 119]);
     let ocean = image::Rgb([70_u8, 107, 159]);
@@ -176,7 +177,7 @@ fn draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     img.save(format!("map_{:02}.png", i + 1)).unwrap();
 }
 
-fn get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, angle2: f64) -> f64 {
+fn _get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, angle2: f64) -> f64 {
     let scale = dimensions[0].max(dimensions[1]) / 3.0;
 
     let center_x = dimensions[0] / 2.0;
@@ -248,19 +249,19 @@ fn main() {
     let img_y = 800;
 
     for seed in 0..12 {
-        let mut map_duration = 0.;
+        let mut _map_duration = 0.;
 
-        let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
+        //let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
 
-        println!("Generating Voronoi graph {}...", seed + 1);
+        /* println!("Generating Voronoi graph {}...", seed + 1);
         let start = Instant::now();
         let mut map = Voronoi::new(seed, img_x, img_y);
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.cells.len());
-        map_duration += duration;
+        map_duration += duration; */
 
         println!("Generating coastline...");
-        let start = Instant::now();
+        let _start = Instant::now();
 
         // I have no idea what these parameters do!
         // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs
@@ -273,15 +274,12 @@ fn main() {
         fbm.set_fractal_lacunarity(2.0);
         fbm.set_frequency(2.0);
 
-        let max_x = f64::from(img_x);
-        let max_y = f64::from(img_y);
+        let map = Map::new(seed, img_x, img_y);
 
-        let angle1 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2π
-        let angle2 = rng.gen_range(0.0..std::f64::consts::TAU); // 0 - 2π
-
-        draw_noise(&fbm, img_x, img_y, seed, angle1, angle2);
+        draw_noise(&fbm, &map, seed);
         continue;
 
+        /*
         let duration = start.elapsed().as_secs_f64();
         println!("\tDone! ({:.2} seconds)", duration);
         map_duration += duration;
@@ -328,7 +326,7 @@ fn main() {
         let mut active = vec![first];
         while !active.is_empty() {
             let p = active.pop().unwrap();
-            
+
             real_ocean[p] = true;
 
             // Append all neighboring Ocean or Coast cells, IF the current cell is Ocean
@@ -351,7 +349,7 @@ fn main() {
         }).collect();
         while !active.is_empty() {
             let p = active.pop().unwrap();
-            
+
             map.cells[p].biome = Biome::Lagoon;
 
             // Append all neighboring Coast cells that aren't "real"
@@ -393,11 +391,11 @@ fn main() {
                     } else {
                         min + 1.0
                     };
-                    
+
                     if dist >= start {
                         continue;
                     }
-                    
+
                     new_heights[i] = new_heights[i].min(dist);
                 }
 
@@ -446,7 +444,7 @@ fn main() {
         // From a random sampling of high ground, create rivers from each by flowing downhill
         let amount = sources.len(); //usize::min(sources.len() / 5, 17);
         let (starts, _) = sources.partial_shuffle(&mut rng, amount);
-        
+
         let mut rivers = Vec::new();
         for start in starts.into_iter() {
             let mut river = Vec::new();
@@ -474,9 +472,9 @@ fn main() {
                     } else {
                         point = p;
                     }
-    
+
                     river.push(point);
-    
+
                     // Check if we've reached water
                     if map.cells[point].biome.is_water() {
                         break;
@@ -537,5 +535,6 @@ fn main() {
         println!("\tDone! ({:.2} seconds)", duration.as_secs_f64());
 
         println!("Generated map in {:.2} seconds\n", map_duration);
+        */
     }
 }
