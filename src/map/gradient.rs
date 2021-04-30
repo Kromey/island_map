@@ -1,7 +1,7 @@
 use lerp::Lerp;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::f64::consts::{PI, TAU};
+use std::{f64::consts::{PI, TAU}, u32};
 
 #[derive(Debug)]
 struct Point {
@@ -22,7 +22,6 @@ impl Point {
 #[derive(Debug)]
 pub struct Gradient {
     points: [Point; 4],
-    scale: f64,
 }
 
 impl Gradient {
@@ -30,46 +29,45 @@ impl Gradient {
         let width = f64::from(width);
         let height = f64::from(height);
 
-        let scale = width.max(height) / 3.0;
-
         let center_x = width / 2.0;
-        let center_y = width / 2.0;
+        let center_y = height / 2.0;
 
         let point1 = Point { x: center_x, y: center_y };
 
-        let angle1 = rng.gen_range(0.0..TAU); // 0 - 2π
-        let angle2 = rng.gen_range(0.0..TAU); // 0 - 2π
+        let angle1 = rng.gen_range(0.0..TAU); // 0 - 2π (full circle)
+        let angle2 = angle1 + rng.gen_range((PI / 4.0)..PI);
 
+        let dist = rng.gen_range(30.0..250.0);
         let point2 = Point {
-            x: center_x + 180.0 * angle1.cos(),
-            y: center_y + 180.0 * angle1.sin(),
+            x: center_x + dist * angle1.cos(),
+            y: center_y + dist * angle1.sin(),
         };
+        let dist = rng.gen_range(15.0..250.0);
         let point3 = Point {
-            x: center_x + 200.0 * angle2.cos(),
-            y: center_y + 200.0 * angle2.sin(),
+            x: center_x + dist * angle2.cos(),
+            y: center_y + dist * angle2.sin(),
         };
 
-
-        let angle3 = match rng.gen_range(1..3) {
-            0 => angle2,
-            1 => angle1 + PI,
-            2 => angle1.lerp(angle2, 0.5),
-            _ => unreachable!(),
+        let mut angle3 = angle1.lerp(angle2, 0.5);
+        if rng.gen() {
+            angle3 += PI;
+        }
+        let dist = if (angle3 - angle1) % TAU < PI / 2.0 || (angle3 - angle2) % TAU < PI / 2.0 {
+            225.0
+        } else {
+            160.0
         };
         let point4 = Point {
-            x: center_x + 220.0 * angle3.cos(),
-            y: center_y + 220.0 * angle3.sin(),
+            x: center_x + dist * angle3.cos(),
+            y: center_y + dist * angle3.sin(),
         };
 
         Gradient {
             points: [point1, point2, point3, point4],
-            scale,
         }
     }
 
     pub fn at(&self, x: f64, y: f64) -> f64 {
-        let _scale = self.scale.powi(2);
-
         let quotient = 10.0;
 
         let grad1 = quotient / self.points[0].dist(x, y);
