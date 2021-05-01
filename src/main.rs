@@ -1,4 +1,3 @@
-use bracket_noise::prelude::*;
 use imageproc::drawing::{draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
@@ -16,7 +15,7 @@ use map::Map;
 
 const SEA_LEVEL: f64 = 0.0;
 
-fn draw_noise(_noise: &FastNoise, map: &Map, i: u64) {
+fn draw_map(map: &Map, i: u64) {
     let mut img = image::ImageBuffer::new(map.width(), map.height());
 
     let ocean = image::Rgb([70_u8, 107, 159]);
@@ -177,7 +176,7 @@ fn _draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     img.save(format!("map_{:02}.png", i + 1)).unwrap();
 }
 
-fn _get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNoise, angle1: f64, angle2: f64) -> f64 {
+/* fn _get_height(point: &delaunator::Point, dimensions: [f64; 2], angle1: f64, angle2: f64) -> f64 {
     let scale = dimensions[0].max(dimensions[1]) / 3.0;
 
     let center_x = dimensions[0] / 2.0;
@@ -242,7 +241,7 @@ fn _get_height(point: &delaunator::Point, dimensions: [f64; 2], noise: &FastNois
     height = height.lerp(-0.2, 1.0 - gradient);
 
     height
-}
+} */
 
 fn main() {
     let img_x = 800;
@@ -263,20 +262,9 @@ fn main() {
         println!("Generating coastline...");
         let _start = Instant::now();
 
-        // I have no idea what these parameters do!
-        // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs
-        // They do seem to give me results I like, though!
-        let mut fbm = FastNoise::seeded(seed);
-        fbm.set_noise_type(NoiseType::SimplexFractal);
-        fbm.set_fractal_type(FractalType::FBM);
-        fbm.set_fractal_octaves(5);
-        fbm.set_fractal_gain(0.6);
-        fbm.set_fractal_lacunarity(2.0);
-        fbm.set_frequency(2.0);
-
         let map = Map::new(seed, img_x, img_y);
 
-        draw_noise(&fbm, &map, seed);
+        draw_map(&map, seed);
         continue;
 
         /*
