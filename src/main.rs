@@ -1,10 +1,10 @@
 use imageproc::drawing::{draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
-use std::cmp::Reverse;
+//use std::cmp::Reverse;
 use std::time::Instant;
-use rand::{prelude::*, seq::SliceRandom};
-use rand_xoshiro::Xoshiro256StarStar;
+//use rand::{prelude::*, seq::SliceRandom};
+//use rand_xoshiro::Xoshiro256StarStar;
 
 mod voronoi;
 use voronoi::{Biome, Voronoi};

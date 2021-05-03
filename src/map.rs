@@ -17,7 +17,7 @@ pub struct Map {
 impl Map {
     pub fn new(seed: u64, width: u32, height: u32) -> Self {
         let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
-        let gradient = Gradient::new(&mut rng, width, height);
+        let gradient = Gradient::new(&mut rng, f64::from(width.max(height)));
 
         // I have no idea what these parameters do!
         // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs

@@ -1,7 +1,7 @@
 use lerp::Lerp;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::{f64::consts::{PI, TAU}, u32};
+use std::f64::consts::{PI, TAU};
 
 #[derive(Debug)]
 struct Point {
@@ -26,14 +26,11 @@ pub struct Gradient {
 }
 
 impl Gradient {
-    pub fn new(rng: &mut Xoshiro256StarStar, width: u32, height: u32) -> Self {
-        let width = f64::from(width);
-        let height = f64::from(height);
-
-        // Find the center and put our first point there
+    pub fn new(rng: &mut Xoshiro256StarStar, scale: f64) -> Self {
+        // Put our first point in the center
         let center_x = 0.5;
         let center_y = 0.5;
-        let point1 = Point { x: center_x, y: center_y };
+        let point1 = Point { x: 0.5, y: 0.5 };
 
         // Generate a random angle anywhere in the circle
         let angle1 = rng.gen_range(0.0..TAU); // 0 - 2π (full circle)
@@ -72,7 +69,7 @@ impl Gradient {
 
         Gradient {
             points: [point1, point2, point3, point4],
-            scale: width.max(height),
+            scale,
         }
     }
 
