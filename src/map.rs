@@ -9,7 +9,7 @@ use gradient::Gradient;
 pub struct Map {
     width: u32,
     height: u32,
-    rng: Xoshiro256StarStar,
+    //rng: Xoshiro256StarStar,
     noise: FastNoise,
     gradient: Gradient,
 }
@@ -28,12 +28,12 @@ impl Map {
         noise.set_fractal_octaves(5);
         noise.set_fractal_gain(0.6);
         noise.set_fractal_lacunarity(2.0);
-        noise.set_frequency(4.0);
+        noise.set_frequency(2.0);
 
         Map {
             width,
             height,
-            rng,
+            //rng,
             noise,
             gradient,
         }
@@ -49,14 +49,14 @@ impl Map {
 
     pub fn get_height(&self, x: f64, y: f64) -> f64 {
         // Get the gradient value at this point
-        let gradient = self.gradient.at(x, y);
+        let gradient = self.gradient.at(x, y).powi(2);
 
         let x = x / self.width as f64;
         let y = y / self.height as f64;
 
         // Get a noise value, and "pull" it up
         let mut height = self.noise.get_noise(x as f32, y as f32) as f64;
-        height = height / 2.0 + 0.5;
+        height = height.lerp(0.5, 0.5);
         // Lerp it towards a point below sea level, using our gradient as the t-value
         height.lerp(-0.2, 1.0 - gradient)
     }

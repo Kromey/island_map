@@ -14,7 +14,7 @@ impl Point {
         (x - self.x).powi(2) + (y - self.y).powi(2)
     }
 
-    pub fn dist(&self, x: f64, y: f64) -> f64 {
+    pub fn _dist(&self, x: f64, y: f64) -> f64 {
         self.dist2(x, y).sqrt()
     }
 }
@@ -22,6 +22,7 @@ impl Point {
 #[derive(Debug)]
 pub struct Gradient {
     points: [Point; 4],
+    scale: f64,
 }
 
 impl Gradient {
@@ -30,8 +31,8 @@ impl Gradient {
         let height = f64::from(height);
 
         // Find the center and put our first point there
-        let center_x = width / 2.0;
-        let center_y = height / 2.0;
+        let center_x = 0.5;
+        let center_y = 0.5;
         let point1 = Point { x: center_x, y: center_y };
 
         // Generate a random angle anywhere in the circle
@@ -40,13 +41,13 @@ impl Gradient {
         let angle2 = angle1 + rng.gen_range((PI / 4.0)..PI);
 
         // 2nd point gets a random distance from the center, projected out on angle1
-        let dist = rng.gen_range(30.0..250.0);
+        let dist = rng.gen_range(0.1..0.3);
         let point2 = Point {
             x: center_x + dist * angle1.cos(),
             y: center_y + dist * angle1.sin(),
         };
         // 3rd point also gets a random distance, on angle2
-        let dist = rng.gen_range(15.0..250.0);
+        let dist = rng.gen_range(0.1..0.3);
         let point3 = Point {
             x: center_x + dist * angle2.cos(),
             y: center_y + dist * angle2.sin(),
@@ -60,9 +61,9 @@ impl Gradient {
         }
         // Give this point an extra "push" outward if it's close to either of our 1st or 2nd angles
         let dist = if (angle3 - angle1) % TAU < PI / 2.0 || (angle3 - angle2) % TAU < PI / 2.0 {
-            225.0
+            0.28
         } else {
-            160.0
+            0.2
         };
         let point4 = Point {
             x: center_x + dist * angle3.cos(),
@@ -71,6 +72,7 @@ impl Gradient {
 
         Gradient {
             points: [point1, point2, point3, point4],
+            scale: width.max(height),
         }
     }
 
@@ -80,14 +82,15 @@ impl Gradient {
     ///
     /// A value within the closed range [0.0, 1.0]
     pub fn at(&self, x: f64, y: f64) -> f64 {
-        let quotient = 10.0;
+        let x = x / self.scale;
+        let y = y / self.scale;
 
-        let grad1 = quotient / self.points[0].dist(x, y);
-        let grad2 = quotient / self.points[1].dist(x, y);
-        let grad3 = quotient / self.points[2].dist(x, y);
-        let grad4 = quotient / self.points[3].dist(x, y);
+        let grad1 = self.points[0].dist2(x, y);
+        let grad2 = self.points[1].dist2(x, y);
+        let grad3 = self.points[2].dist2(x, y);
+        let grad4 = self.points[3].dist2(x, y);
 
-        ((grad1 * 1.4 + grad2 * 0.50 + grad3 * 0.75 - grad4.powi(2)) * 1.5)
+        1.0 - ((grad1 * 1.4 + grad2 * 0.50 + grad3 * 0.75 - grad4.powi(2)) * 1.5)
             .clamp(0.0, 1.0)
     }
 }
