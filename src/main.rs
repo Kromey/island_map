@@ -11,9 +11,7 @@ use voronoi::{Biome, Voronoi};
 pub mod impluvium;
 pub use impluvium::{river, lake};
 mod map;
-use map::Map;
-
-const SEA_LEVEL: f64 = 0.0;
+use map::{Map, SEA_LEVEL};
 
 fn draw_map(map: &Map, i: u64) {
     let mut img = image::ImageBuffer::new(map.width(), map.height());
@@ -36,6 +34,11 @@ fn draw_map(map: &Map, i: u64) {
         };
 
         *pixel = color;
+    }
+
+    let sand = image::Rgb([160_u8, 144, 119]);
+    for (x, y) in map.get_coast() {
+        img.put_pixel(x as u32, y as u32, sand);
     }
 
     img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();

@@ -2,9 +2,12 @@ use bracket_noise::prelude::*;
 use lerp::Lerp;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
+use std::collections::HashSet;
 
 mod gradient;
 use gradient::Gradient;
+
+pub const SEA_LEVEL: f64 = 0.0;
 
 pub struct Map {
     width: u32,
@@ -59,5 +62,40 @@ impl Map {
         height = height.lerp(0.5, 0.5);
         // Lerp it towards a point below sea level, using our gradient as the t-value
         height.lerp(-0.2, 1.0 - gradient)
+    }
+
+    fn get_neighbors(&self, x: u32, y: u32) -> Vec<(u32, u32)> {
+        vec![
+            (x.wrapping_sub(1), y.wrapping_sub(1)),
+            (x.wrapping_sub(1), y),
+            (x.wrapping_sub(1), y .wrapping_add(1)),
+            (x, y.wrapping_sub(1)),
+            (x, y .wrapping_add(1)),
+            (x .wrapping_add(1), y.wrapping_sub(1)),
+            (x .wrapping_add(1), y),
+            (x .wrapping_add(1), y .wrapping_add(1)),
+        ]
+    }
+
+    pub fn get_coast(&self) -> Vec<(f64, f64)> {
+        let mut coast = HashSet::new();
+        let mut active = vec![(0, 0)];
+        let mut visited = HashSet::new();
+
+        while let Some((x, y)) = active.pop() {
+            for (x, y) in self.get_neighbors(x, y) {
+                if x >= self.width || y >= self.height {
+                    continue;
+                }
+
+                if self.get_height(f64::from(x), f64::from(y)) > SEA_LEVEL {
+                    coast.insert((x, y));
+                } else if visited.insert((x, y)) {
+                    active.push((x, y));
+                }
+            }
+        }
+
+        coast.drain().map(|(x, y)| (f64::from(x), f64::from(y))).collect()
     }
 }
