@@ -64,30 +64,31 @@ impl Map {
         height.lerp(-0.2, 1.0 - gradient)
     }
 
-    fn get_neighbors(&self, x: u32, y: u32) -> Vec<(u32, u32)> {
+    fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item=(u32,u32)> {
+        let width = self.width;
+        let height = self.height;
+
         vec![
             (x.wrapping_sub(1), y.wrapping_sub(1)),
             (x.wrapping_sub(1), y),
-            (x.wrapping_sub(1), y .wrapping_add(1)),
+            (x.wrapping_sub(1), y.wrapping_add(1)),
             (x, y.wrapping_sub(1)),
-            (x, y .wrapping_add(1)),
-            (x .wrapping_add(1), y.wrapping_sub(1)),
-            (x .wrapping_add(1), y),
-            (x .wrapping_add(1), y .wrapping_add(1)),
+            (x, y.wrapping_add(1)),
+            (x.wrapping_add(1), y.wrapping_sub(1)),
+            (x.wrapping_add(1), y),
+            (x.wrapping_add(1), y.wrapping_add(1)),
         ]
+            .into_iter()
+            .filter(move |(x, y)| *x < width && *y < height)
     }
 
-    pub fn get_coast(&self) -> Vec<(u32, u32)> {
+    pub fn get_coast(&self) -> impl Iterator<Item=(u32,u32)> {
         let mut coast = HashSet::new();
         let mut active = vec![(0, 0)];
         let mut visited = HashSet::new();
 
         while let Some((x, y)) = active.pop() {
             for (x, y) in self.get_neighbors(x, y) {
-                if x >= self.width || y >= self.height {
-                    continue;
-                }
-
                 if self.get_height(f64::from(x), f64::from(y)) > SEA_LEVEL {
                     coast.insert((x, y));
                 } else if visited.insert((x, y)) {
@@ -96,6 +97,6 @@ impl Map {
             }
         }
 
-        coast.into_iter().collect()
+        coast.into_iter()
     }
 }
