@@ -251,111 +251,13 @@ fn main() {
     let img_y = 800;
 
     for seed in 0..12 {
-        let mut _map_duration = 0.;
-
-        //let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
-
-        /* println!("Generating Voronoi graph {}...", seed + 1);
-        let start = Instant::now();
-        let mut map = Voronoi::new(seed, img_x, img_y);
-        let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds; {} polygons)", duration, map.cells.len());
-        map_duration += duration; */
-
-        println!("Generating coastline...");
-        let _start = Instant::now();
+        println!("Generating island {}...", seed + 1);
 
         let map = Map::new(seed, img_x, img_y);
 
         draw_map(&map, seed);
-        continue;
 
         /*
-        let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds)", duration);
-        map_duration += duration;
-
-        let start = Instant::now();
-        println!("Defining waterlines...");
-
-        // Initial pass just to define land/sea border; we use Lake instead of Ocean for now
-        for cell in map.cells.iter_mut() {
-            let voronoi::Cell{x,y,..} = cell;
-            cell.biome = if cell.height < SEA_LEVEL {
-                Biome::Lake
-            } else {
-                if *x < 10. || *x > f64::from(img_x) - 10. || *y < 10. || *y > f64::from(img_y) - 10. {
-                    Biome::Lake
-                } else {
-                    Biome::Beach
-                }
-            };
-        }
-
-        // Use a flood-fill to turn open ocean into, well, Ocean
-        // By starting from a point on the hull we guarantee we start from open ocean
-        let first = map.delaunay.hull[0];
-        let mut active = vec![first];
-        while !active.is_empty() {
-            let p = active.pop().unwrap();
-
-            map.cells[p].biome = {
-                // Check adjacent cells if they're land
-                if map.neighbors_of_point(p).into_iter().any(|p| map.cells[p].height > SEA_LEVEL ) {
-                    Biome::Coast
-                } else {
-                    Biome::Ocean
-                }
-            };
-
-            // Append all neighboring "Lake" cells
-            active.extend(map.neighbors_of_point(p).into_iter().filter(|&p| map.cells[p].biome == Biome::Lake ));
-        }
-
-        // Now flood-fill again, looking for "real" open Ocean and Ocean-adjacent coasts
-        let mut real_ocean = vec![false; map.cells.len()];
-        let mut active = vec![first];
-        while !active.is_empty() {
-            let p = active.pop().unwrap();
-
-            real_ocean[p] = true;
-
-            // Append all neighboring Ocean or Coast cells, IF the current cell is Ocean
-            if map.cells[p].biome == Biome::Ocean {
-                active.extend(
-                    map
-                        .neighbors_of_point(p)
-                        .into_iter()
-                        .filter(|&p| (map.cells[p].biome == Biome::Coast || map.cells[p].biome == Biome::Ocean) && !real_ocean[p] )
-                );
-            }
-        }
-        // Now we'll flood-fill Ocean/Coast that isn't "real", but only from disconnected Ocean
-        active = real_ocean.iter().enumerate().filter_map(|(i, is_real)| {
-            if !is_real && map.cells[i].biome == Biome::Ocean {
-                Some(i)
-            } else {
-                None
-            }
-        }).collect();
-        while !active.is_empty() {
-            let p = active.pop().unwrap();
-
-            map.cells[p].biome = Biome::Lagoon;
-
-            // Append all neighboring Coast cells that aren't "real"
-            active.extend(
-                map
-                    .neighbors_of_point(p)
-                    .into_iter()
-                    .filter(|&p| map.cells[p].biome == Biome::Coast && !real_ocean[p] )
-            );
-        }
-
-        let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds)", duration);
-        map_duration += duration;
-
         // Define a new heightmap based on distance from Coast
         // Lagoons are considered "coast", and Lakes do not add to elevation
         let start = Instant::now();
