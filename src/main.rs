@@ -38,7 +38,7 @@ fn draw_map(map: &Map, i: u64) {
 
     let sand = image::Rgb([160_u8, 144, 119]);
     for (x, y) in map.get_coast() {
-        img.put_pixel(x as u32, y as u32, sand);
+        img.put_pixel(x, y, sand);
     }
 
     img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();

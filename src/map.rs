@@ -77,7 +77,7 @@ impl Map {
         ]
     }
 
-    pub fn get_coast(&self) -> Vec<(f64, f64)> {
+    pub fn get_coast(&self) -> Vec<(u32, u32)> {
         let mut coast = HashSet::new();
         let mut active = vec![(0, 0)];
         let mut visited = HashSet::new();
@@ -96,6 +96,6 @@ impl Map {
             }
         }
 
-        coast.drain().map(|(x, y)| (f64::from(x), f64::from(y))).collect()
+        coast.into_iter().collect()
     }
 }
