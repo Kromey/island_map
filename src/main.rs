@@ -21,7 +21,7 @@ fn draw_map(map: &Map, i: u64) {
     draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(map.width(), map.height()), ocean);
 
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let height = map.get_height(x as f64, y as f64);
+        let height = map.get_height(x, y);
 
         let color = if height <= SEA_LEVEL {
             ocean
@@ -38,7 +38,7 @@ fn draw_map(map: &Map, i: u64) {
 
     let sand = image::Rgb([160_u8, 144, 119]);
     for (x, y) in map.get_coast() {
-        img.put_pixel(x, y, sand);
+        img.put_pixel(*x, *y, sand);
     }
 
     img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();

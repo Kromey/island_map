@@ -2,7 +2,6 @@ use bracket_noise::prelude::*;
 use lerp::Lerp;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::collections::HashSet;
 
 mod gradient;
 use gradient::Gradient;
@@ -15,12 +14,15 @@ pub struct Map {
     //rng: Xoshiro256StarStar,
     noise: FastNoise,
     gradient: Gradient,
+    coast: Vec<(u32,u32)>,
+    heightmap: Vec<f64>,
 }
 
 impl Map {
     pub fn new(seed: u64, width: u32, height: u32) -> Self {
         let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
         let gradient = Gradient::new(&mut rng, f64::from(width.max(height)));
+        let mut heightmap = vec![None; (width * height) as usize];
 
         // I have no idea what these parameters do!
         // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs
@@ -33,13 +35,86 @@ impl Map {
         noise.set_fractal_lacunarity(2.0);
         noise.set_frequency(2.0);
 
-        Map {
+        let mut map = Map {
             width,
             height,
             //rng,
             noise,
             gradient,
+            coast: Vec::new(),
+            heightmap: Vec::new(),
+        };
+
+        map.find_coast(&mut heightmap);
+        // Make one pass on a clone just to find out maximal distance from the coast
+        let max_dist = map.scale_height_from_coast(&mut heightmap.clone(), 1.0);
+        // Now make the real pass, re-scaling height based on how far it from the coast
+        map.scale_height_from_coast(&mut heightmap, f64::from(max_dist));
+
+        map.heightmap = heightmap.into_iter().collect::<Option<Vec<f64>>>().unwrap();
+
+        map
+    }
+
+    fn to_idx(&self, x: u32, y: u32) -> usize {
+        (x * self.height()+ y) as usize
+    }
+
+    fn find_coast(&mut self, heightmap: &mut Vec<Option<f64>>) {
+        let mut coast = Vec::with_capacity(heightmap.len() / 4);
+        let mut active = vec![(0, 0)];
+
+        while let Some((x, y)) = active.pop() {
+            for (x, y) in self.get_neighbors(x, y) {
+                if heightmap[self.to_idx(x, y)].is_some() {
+                    continue;
+                }
+
+                let height = self.height_from_gradient(x as f64, y as f64);
+                heightmap[self.to_idx(x, y)] = Some(height);
+
+                if height > SEA_LEVEL {
+                    coast.push((x as u32, y as u32));
+                } else {
+                    active.push((x, y));
+                }
+            }
         }
+
+        coast.shrink_to_fit();
+        self.coast = coast;
+    }
+
+    fn scale_height_from_coast(&self, heightmap: &mut Vec<Option<f64>>, height_scale: f64) -> u32 {
+        let mut frontier = self.coast.clone();
+        let mut next_frontier = Vec::with_capacity(frontier.len());
+
+        let mut dist = 0;
+
+        for i in 0.. {
+            if frontier.is_empty() {
+                break;
+            }
+            next_frontier.clear();
+            dist = i;
+            let scale = (f64::from(dist + 1) / height_scale).powi(2);
+
+            while let Some((x, y)) = frontier.pop() {
+                for (x, y) in self.get_neighbors(x, y) {
+                    let idx = self.to_idx(x, y);
+                    if heightmap[idx].is_none() {
+                        let height = self.height_from_gradient(f64::from(x), f64::from(y));
+                        heightmap[idx] = Some(height.lerp(1.0, scale));
+
+                        next_frontier.push((x, y));
+                    }
+                }
+            }
+
+            std::mem::swap(&mut frontier, &mut next_frontier);
+        }
+
+        dist
     }
 
     pub fn width(&self) -> u32 {
@@ -50,7 +125,7 @@ impl Map {
         self.height
     }
 
-    pub fn get_height(&self, x: f64, y: f64) -> f64 {
+    fn height_from_gradient(&self, x: f64, y: f64) -> f64 {
         // Get the gradient value at this point
         let gradient = self.gradient.at(x, y).powi(2);
 
@@ -82,21 +157,11 @@ impl Map {
             .filter(move |(x, y)| *x < width && *y < height)
     }
 
-    pub fn get_coast(&self) -> impl Iterator<Item=(u32,u32)> {
-        let mut coast = HashSet::new();
-        let mut active = vec![(0, 0)];
-        let mut visited = HashSet::new();
+    pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32,u32)> {
+        &self.coast
+    }
 
-        while let Some((x, y)) = active.pop() {
-            for (x, y) in self.get_neighbors(x, y) {
-                if self.get_height(f64::from(x), f64::from(y)) > SEA_LEVEL {
-                    coast.insert((x, y));
-                } else if visited.insert((x, y)) {
-                    active.push((x, y));
-                }
-            }
-        }
-
-        coast.into_iter()
+    pub fn get_height(&self, x: u32, y: u32) -> f64 {
+        self.heightmap[self.to_idx(x, y)]
     }
 }
