@@ -47,9 +47,9 @@ impl Map {
 
         map.find_coast(&mut heightmap);
         // Make one pass on a clone just to find out maximal distance from the coast
-        let max_dist = map.scale_height_from_coast(&mut heightmap.clone(), 1.0);
+        let (max_height, max_dist) = map.scale_height_from_coast(&mut heightmap.clone(), 1.0, 1);
         // Now make the real pass, re-scaling height based on how far it from the coast
-        map.scale_height_from_coast(&mut heightmap, f64::from(max_dist));
+        map.scale_height_from_coast(&mut heightmap, max_height, max_dist);
 
         map.heightmap = heightmap.into_iter().collect::<Option<Vec<f64>>>().unwrap();
 
@@ -85,10 +85,11 @@ impl Map {
         self.coast = coast;
     }
 
-    fn scale_height_from_coast(&self, heightmap: &mut Vec<Option<f64>>, height_scale: f64) -> u32 {
+    fn scale_height_from_coast(&self, heightmap: &mut Vec<Option<f64>>, height_scale: f64, max_dist: i32) -> (f64, i32) {
         let mut frontier = self.coast.clone();
         let mut next_frontier = Vec::with_capacity(frontier.len());
 
+        let mut max_height: f64 = 0.0;
         let mut dist = 0;
 
         for i in 0.. {
@@ -97,14 +98,15 @@ impl Map {
             }
             next_frontier.clear();
             dist = i;
-            let scale = (f64::from(dist + 1) / height_scale).powi(2);
+            let scale = 1.0.lerp(height_scale, (f64::from(dist + 1) / f64::from(max_dist)).powi(2));
 
             while let Some((x, y)) = frontier.pop() {
                 for (x, y) in self.get_neighbors(x, y) {
                     let idx = self.to_idx(x, y);
                     if heightmap[idx].is_none() {
                         let height = self.height_from_gradient(f64::from(x), f64::from(y));
-                        heightmap[idx] = Some(height.lerp(1.0, scale));
+                        max_height = max_height.max(height);
+                        heightmap[idx] = Some(height / scale); //Some(height.lerp(1.0, height_scale));
 
                         next_frontier.push((x, y));
                     }
@@ -114,7 +116,7 @@ impl Map {
             std::mem::swap(&mut frontier, &mut next_frontier);
         }
 
-        dist
+        (max_height, dist)
     }
 
     pub fn width(&self) -> u32 {
