@@ -21,7 +21,7 @@ pub struct Map {
 impl Map {
     pub fn new(seed: u64, width: u32, height: u32) -> Self {
         let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
-        let gradient = Gradient::new(&mut rng, f64::from(width.max(height)));
+        let gradient = Gradient::new(&mut rng, 4);
         let mut heightmap = vec![None; (width * height) as usize];
 
         // I have no idea what these parameters do!
@@ -128,17 +128,18 @@ impl Map {
     }
 
     fn height_from_gradient(&self, x: f64, y: f64) -> f64 {
-        // Get the gradient value at this point
-        let gradient = self.gradient.at(x, y).powi(2);
+        let scale = self.width.min(self.height) as f64;
+        let x = x / scale;
+        let y = y / scale;
 
-        let x = x / self.width as f64;
-        let y = y / self.height as f64;
+        // Get the gradient value at this point
+        let gradient = self.gradient.at(x, y);
 
         // Get a noise value, and "pull" it up
-        let mut height = self.noise.get_noise(x as f32, y as f32) as f64;
-        height = height.lerp(0.5, 0.5);
+        let mut noise = self.noise.get_noise(x as f32, y as f32) as f64;
+        noise = noise.lerp(0.5, 0.5);
         // Lerp it towards a point below sea level, using our gradient as the t-value
-        height.lerp(-0.2, 1.0 - gradient)
+        (-0.2).lerp(noise, gradient)
     }
 
     fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item=(u32,u32)> {
