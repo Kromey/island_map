@@ -258,58 +258,6 @@ fn main() {
         draw_map(&map, seed);
 
         /*
-        // Define a new heightmap based on distance from Coast
-        // Lagoons are considered "coast", and Lakes do not add to elevation
-        let start = Instant::now();
-        println!("Generating heightmap...");
-
-        let mut new_heights = vec![f64::MAX; map.cells.len()];
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for i in 0..map.cells.len() {
-                let my_height = new_heights[i];
-
-                if map.cells[i].biome.is_water() {
-                    new_heights[i] = 0.0;
-                } else {
-                    let start = my_height;
-                    let min = map.neighbors_of_point(i)
-                        .iter()
-                        .filter(|&&p| new_heights[p] > -0.1)
-                        .fold(start, |min, &p| min.min(new_heights[p]) );
-
-                    let dist = if map.cells[i].biome == Biome::Lake {
-                        min
-                    } else {
-                        min + 1.0
-                    };
-
-                    if dist >= start {
-                        continue;
-                    }
-
-                    new_heights[i] = new_heights[i].min(dist);
-                }
-
-                if (my_height - new_heights[i]).abs() > f64::EPSILON {
-                    changed = true;
-                }
-            }
-        }
-        let max_height = new_heights.iter()
-            .fold(new_heights[0], |max, &h| max.max(h));
-        for (i, height) in new_heights.iter().enumerate() {
-            if *height > 0.0 {
-                let height = (*height / max_height).powi(2);
-                map.cells[i].height = map.cells[i].height.lerp(1.0, height);
-            }
-        }
-
-        let duration = start.elapsed().as_secs_f64();
-        println!("\tDone! ({:.2} seconds)", duration);
-        map_duration += duration;
-
         // Rivers
         let start = Instant::now();
         println!("Creating rivers...");

@@ -101,10 +101,19 @@ impl Map {
             let scale = 1.0.lerp(height_scale, (f64::from(dist + 1) / f64::from(max_dist)).powi(2));
 
             while let Some((x, y)) = frontier.pop() {
+                // Get the height of our current frontier point, which will become the height of any lakes we might touch
+                let frontier_height = self.height_from_gradient(f64::from(x), f64::from(y)) / scale;
+
                 for (x, y) in self.get_neighbors(x, y) {
                     let idx = self.to_idx(x, y);
                     if heightmap[idx].is_none() {
                         let height = self.height_from_gradient(f64::from(x), f64::from(y));
+
+                        if height <= SEA_LEVEL {
+                            next_frontier.append(&mut self.get_lake(x, y, frontier_height, heightmap));
+                            continue;
+                        }
+
                         max_height = max_height.max(height);
                         heightmap[idx] = Some(height / scale); //Some(height.lerp(1.0, height_scale));
 
@@ -117,6 +126,32 @@ impl Map {
         }
 
         (max_height, dist)
+    }
+
+    fn get_lake(&self, x: u32, y: u32, lake_height: f64, heightmap: &mut Vec<Option<f64>>) -> Vec<(u32, u32)> {
+        let mut lake_frontier = Vec::new();
+        let mut active = vec![(x, y)];
+
+        while let Some((x, y)) = active.pop() {
+            for (x, y) in self.get_neighbors(x, y) {
+                let idx = self.to_idx(x, y);
+                if heightmap[idx].is_some() {
+                    continue;
+                }
+
+                let height = self.height_from_gradient(f64::from(x), f64::from(y));
+                heightmap[idx] = Some(lake_height);
+
+                if height > SEA_LEVEL {
+                    lake_frontier.push((x as u32, y as u32));
+                } else {
+                    heightmap[idx] = Some(lake_height);
+                    active.push((x, y));
+                }
+            }
+        }
+
+        lake_frontier
     }
 
     pub fn width(&self) -> u32 {
