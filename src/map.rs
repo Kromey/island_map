@@ -46,10 +46,10 @@ impl Map {
         };
 
         map.find_coast(&mut heightmap);
-        // Make one pass on a clone just to find out maximal distance from the coast
-        let (max_height, max_dist) = map.scale_height_from_coast(&mut heightmap.clone(), 1.0, 1);
+        // Make one pass on a clone just to find our maximal distance from the coast
+        let max_height = map.scale_height_from_coast(&mut heightmap.clone(), 1.0);
         // Now make the real pass, re-scaling height based on how far it from the coast
-        map.scale_height_from_coast(&mut heightmap, max_height, max_dist);
+        map.scale_height_from_coast(&mut heightmap, max_height);
 
         map.heightmap = heightmap.into_iter().collect::<Option<Vec<f64>>>().unwrap();
 
@@ -85,29 +85,28 @@ impl Map {
         self.coast = coast;
     }
 
-    fn scale_height_from_coast(&self, heightmap: &mut Vec<Option<f64>>, height_scale: f64, max_dist: i32) -> (f64, i32) {
+    fn scale_height_from_coast(&self, heightmap: &mut Vec<Option<f64>>, height_scale: f64) -> f64 {
         let mut frontier = self.coast.clone();
         let mut next_frontier = Vec::with_capacity(frontier.len());
 
         let mut max_height: f64 = 0.0;
-        let mut dist = 0;
 
         for i in 0.. {
             if frontier.is_empty() {
                 break;
             }
             next_frontier.clear();
-            dist = i;
-            let scale = 1.0.lerp(height_scale, (f64::from(dist + 1) / f64::from(max_dist)).powi(2));
+            // Add 1 because we're actually going to be computing the *next* level
+            let dist = f64::from(i + 1);
 
             while let Some((x, y)) = frontier.pop() {
                 // Get the height of our current frontier point, which will become the height of any lakes we might touch
-                let frontier_height = self.height_from_gradient(f64::from(x), f64::from(y)) / scale;
+                let frontier_height = heightmap[self.to_idx(x, y)].unwrap();
 
                 for (x, y) in self.get_neighbors(x, y) {
                     let idx = self.to_idx(x, y);
                     if heightmap[idx].is_none() {
-                        let height = self.height_from_gradient(f64::from(x), f64::from(y));
+                        let height = self.height_from_gradient(f64::from(x), f64::from(y)) * dist / height_scale;
 
                         if height <= SEA_LEVEL {
                             next_frontier.append(&mut self.get_lake(x, y, frontier_height, heightmap));
@@ -115,7 +114,7 @@ impl Map {
                         }
 
                         max_height = max_height.max(height);
-                        heightmap[idx] = Some(height / scale); //Some(height.lerp(1.0, height_scale));
+                        heightmap[idx] = Some(height);
 
                         next_frontier.push((x, y));
                     }
@@ -125,7 +124,7 @@ impl Map {
             std::mem::swap(&mut frontier, &mut next_frontier);
         }
 
-        (max_height, dist)
+        max_height
     }
 
     fn get_lake(&self, x: u32, y: u32, lake_height: f64, heightmap: &mut Vec<Option<f64>>) -> Vec<(u32, u32)> {
