@@ -1,6 +1,5 @@
-use crate::Biome;
 use super::strahler::Strahler;
-use crate::voronoi::Voronoi;
+use crate::Map;
 
 pub struct Lake {
     cells: Vec<usize>,
@@ -10,16 +9,16 @@ pub struct Lake {
 }
 
 impl Lake {
-    pub fn new_at(start: usize, map: &Voronoi) -> Self {
+    pub fn new_at(start: usize, map: &Map) -> Self {
         let mut lake = Self {
-            height: map.cells[start].height,
+            height: map.heightmap[start],
             cells: vec![start],
             order: Default::default(),
         };
 
         loop {
             let neighbor = lake.lowest_neighbor(map);
-            let neighbor_height = map.cells[neighbor].height;
+            let neighbor_height = map.heightmap[neighbor];
             
             if neighbor_height < lake.height {
                 // We've expanded to reach a lower-height neighbor, we're done!
@@ -35,10 +34,10 @@ impl Lake {
         lake
     }
 
-    pub fn lowest_neighbor(&self, map: &Voronoi) -> usize {
+    pub fn lowest_neighbor(&self, map: &Map) -> usize {
         self.cells
             .iter()
-            .flat_map(|&cell| map.neighbors_of_point(cell))
+            .flat_map(|&cell| map.get_neighbors(cell as u32, cell as u32))
             .filter_map(|neighbor| {
                 if !self.cells.contains(&neighbor) {
                     Some((neighbor, map.cells[neighbor].height))
@@ -51,7 +50,7 @@ impl Lake {
             .0
     }
 
-    pub fn apply(&self, map: &mut Voronoi) {
+    pub fn apply(&self, map: &mut Map) {
         for &cell in self.cells.iter() {
             map.cells[cell].height = self.height;
             map.cells[cell].biome = Biome::Lake;

@@ -5,6 +5,7 @@ use rand_xoshiro::Xoshiro256StarStar;
 
 mod gradient;
 use gradient::Gradient;
+mod watershed;
 
 pub const SEA_LEVEL: f64 = 0.0;
 
@@ -16,6 +17,7 @@ pub struct Map {
     gradient: Gradient,
     coast: Vec<(u32,u32)>,
     heightmap: Vec<f64>,
+    watersheds: Vec<watershed::Watershed>,
 }
 
 impl Map {
@@ -43,6 +45,7 @@ impl Map {
             gradient,
             coast: Vec::new(),
             heightmap: Vec::new(),
+            watersheds: Vec::new(),
         };
 
         map.find_coast(&mut heightmap);
@@ -53,11 +56,22 @@ impl Map {
 
         map.heightmap = heightmap.into_iter().collect::<Option<Vec<f64>>>().unwrap();
 
+        map.watersheds = watershed::Watershed::create_all(&map);
+
         map
     }
 
     fn to_idx(&self, x: u32, y: u32) -> usize {
-        (x * self.height()+ y) as usize
+        (x * self.height() + y) as usize
+    }
+
+    fn from_idx(&self, idx: usize) -> (u32, u32) {
+        let idx = idx as u32;
+
+        (
+            idx / self.height(),
+            idx % self.height(),
+        )
     }
 
     fn find_coast(&mut self, heightmap: &mut Vec<Option<f64>>) {
@@ -97,7 +111,7 @@ impl Map {
             }
             next_frontier.clear();
             // Add 1 because we're actually going to be computing the *next* level
-            let dist = f64::from(i + 1);
+            let dist = f64::from(i + 1).sqrt();
 
             while let Some((x, y)) = frontier.pop() {
                 // Get the height of our current frontier point, which will become the height of any lakes we might touch
@@ -198,7 +212,44 @@ impl Map {
         &self.coast
     }
 
+    pub fn get_rivers(&self) -> Vec<((u32, u32), (u32, u32))> {
+        self.watersheds.iter()
+            .map(|watershed| watershed.river_segments())
+            .flatten()
+            .map(|(start, end)| {
+                let (x1, y1) = self.from_idx(start);
+                let (x2, y2) = self.from_idx(end);
+
+                ((x1, y1), (x2, y2))
+            })
+            .collect()
+    }
+
     pub fn get_height(&self, x: u32, y: u32) -> f64 {
         self.heightmap[self.to_idx(x, y)]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_and_from_idx() {
+        let map = Map::new(1, 20, 20);
+
+        for x in 0..20 {
+            for y in 0..20 {
+                let idx = map.to_idx(x, y);
+                let (x2, y2) = map.from_idx(idx);
+                let idx2 = map.to_idx(x2, y2);
+
+                eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
+
+                assert_eq!(x, x2, "x and x2 aren't the same!");
+                assert_eq!(y, y2, "y and y2 aren't the same!");
+                assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
+            }
+        }
     }
 }

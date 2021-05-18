@@ -1,15 +1,11 @@
-use imageproc::drawing::{draw_line_segment_mut, draw_filled_rect_mut, draw_polygon_mut};
+use imageproc::drawing::{draw_filled_rect_mut, draw_line_segment_mut};
 use imageproc::rect::Rect;
 use lerp::Lerp;
 //use std::cmp::Reverse;
-use std::time::Instant;
+//use std::time::Instant;
 //use rand::{prelude::*, seq::SliceRandom};
 //use rand_xoshiro::Xoshiro256StarStar;
 
-mod voronoi;
-use voronoi::{Biome, Voronoi};
-pub mod impluvium;
-pub use impluvium::{river, lake};
 mod map;
 use map::{Map, SEA_LEVEL};
 
@@ -36,6 +32,12 @@ fn draw_map(map: &Map, i: u64) {
         *pixel = color;
     }
 
+    // Draw rivers
+    let river = image::Rgb([70_u8, 107, 159]);
+    for ((x1, y1), (x2, y2)) in map.get_rivers() {
+        draw_line_segment_mut(&mut img, (x1 as f32, y1 as f32), (x2 as f32, y2 as f32), river);
+    }
+
     let sand = image::Rgb([160_u8, 144, 119]);
     for (x, y) in map.get_coast() {
         img.put_pixel(*x, *y, sand);
@@ -44,7 +46,7 @@ fn draw_map(map: &Map, i: u64) {
     img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();
 }
 
-fn _draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
+/* fn _draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
     let mut img = image::ImageBuffer::new(img_x as u32, img_y as u32);
     let _sand = image::Rgb([160_u8, 144, 119]);
     let ocean = image::Rgb([70_u8, 107, 159]);
@@ -177,7 +179,7 @@ fn _draw_voronoi(vor: &Voronoi, img_x: u32, img_y: u32, i: u64) {
 
     println!("\tSaving...");
     img.save(format!("map_{:02}.png", i + 1)).unwrap();
-}
+} */
 
 /* fn _get_height(point: &delaunator::Point, dimensions: [f64; 2], angle1: f64, angle2: f64) -> f64 {
     let scale = dimensions[0].max(dimensions[1]) / 3.0;

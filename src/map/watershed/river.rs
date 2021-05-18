@@ -8,13 +8,67 @@ pub struct River {
 }
 
 impl River {
-    #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self {
-            river: Vec::new(),
-            order: Vec::new(),
-            branches: Vec::new(),
+    // pub fn new() -> Self {
+    //     Self {
+    //         river: Vec::new(),
+    //         order: Vec::new(),
+    //         branches: Vec::new(),
+    //     }
+    // }
+
+    pub fn new_from(map: &crate::map::Map, start_idx: usize) -> Self {
+        let mut river = vec![start_idx];
+
+        let mut current = start_idx;
+        loop {
+            // Find the lowest neighbor
+            let (x, y) = map.from_idx(current);
+            if let Some(lowest) = map.get_neighbors(x, y)
+                .into_iter()
+                .filter_map(|(x, y)| {
+                    let idx = map.to_idx(x, y);
+                    if river.contains(&idx) {
+                        None
+                    } else {
+                        Some(idx)
+                    }
+                })
+                .min_by(|&idx1, &idx2| {
+                    if map.heightmap[idx1] < map.heightmap[idx2] {
+                        std::cmp::Ordering::Less
+                    } else {
+                        std::cmp::Ordering::Greater
+                    }
+                })
+            {
+                // Make sure it's lower than us
+                if map.heightmap[lowest] > map.heightmap[current] {
+                    // TODO: Spawn a lake here
+                    break;
+                } else {
+                    current = lowest;
+                }
+
+                river.push(current);
+
+                // Check if we've reached water
+                if map.heightmap[current] <= crate::SEA_LEVEL {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
+
+        // River is in source-to-mouth order, reverse for mouth-to-source
+        river.reverse();
+
+        // Convert this Vec into a River
+        river.into()
+    }
+
+    pub fn merge(&mut self, other: River) {
+        self.add_branch(other.river);
     }
     
     pub fn add_branch(&mut self, branch: Vec<usize>) {
@@ -89,6 +143,10 @@ impl River {
         }
         
         segments
+    }
+
+    pub fn len(&self) -> usize {
+        self.river.len()
     }
 
     pub fn mouth(&self) -> usize {
