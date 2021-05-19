@@ -244,10 +244,42 @@ mod tests {
                 let (x2, y2) = map.from_idx(idx);
                 let idx2 = map.to_idx(x2, y2);
 
-                eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
+                //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
 
-                assert_eq!(x, x2, "x and x2 aren't the same!");
-                assert_eq!(y, y2, "y and y2 aren't the same!");
+                assert_eq!((x, y), (x2, y2), "{:?} and {:?} aren't the same!", (x, y), (x2, y2));
+                assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
+            }
+        }
+    }
+
+    #[test]
+    fn to_and_from_uneven_idx() {
+        let map = Map::new(1, 20, 35);
+
+        for x in 0..20 {
+            for y in 0..35 {
+                let idx = map.to_idx(x, y);
+                let (x2, y2) = map.from_idx(idx);
+                let idx2 = map.to_idx(x2, y2);
+
+                //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
+
+                assert_eq!((x, y), (x2, y2), "{:?} and {:?} aren't the same!", (x, y), (x2, y2));
+                assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
+            }
+        }
+
+        let map = Map::new(1, 35, 20);
+
+        for x in 0..35 {
+            for y in 0..20 {
+                let idx = map.to_idx(x, y);
+                let (x2, y2) = map.from_idx(idx);
+                let idx2 = map.to_idx(x2, y2);
+
+                //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
+
+                assert_eq!((x, y), (x2, y2), "{:?} and {:?} aren't the same!", (x, y), (x2, y2));
                 assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
             }
         }
