@@ -212,7 +212,7 @@ impl Map {
         &self.coast
     }
 
-    pub fn get_rivers(&self) -> Vec<((u32, u32), (u32, u32))> {
+    pub fn get_river_segments(&self) -> Vec<((u32, u32), (u32, u32))> {
         self.watersheds.iter()
             .map(|watershed| watershed.river_segments())
             .flatten()

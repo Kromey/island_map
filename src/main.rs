@@ -34,7 +34,7 @@ fn draw_map(map: &Map, i: u64) {
 
     // Draw rivers
     let river = image::Rgb([70_u8, 107, 159]);
-    for ((x1, y1), (x2, y2)) in map.get_rivers() {
+    for ((x1, y1), (x2, y2)) in map.get_river_segments() {
         draw_line_segment_mut(&mut img, (x1 as f32, y1 as f32), (x2 as f32, y2 as f32), river);
     }
 
