@@ -26,6 +26,10 @@ impl Watershed {
             b.1.partial_cmp(a.1).unwrap()
         });
 
+        if seeds.len() > 5 {
+            seeds.resize(5, (0, &0.0));
+        }
+
         let mut rivers = Vec::new();
         while let Some(start) = seeds.pop() {
             let (idx, _) = start;

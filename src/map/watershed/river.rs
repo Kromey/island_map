@@ -41,20 +41,21 @@ impl River {
                     }
                 })
             {
-                // Make sure it's lower than us
-                if map.heightmap[lowest] > map.heightmap[current] {
-                    // TODO: Spawn a lake here
-                    break;
-                } else {
-                    current = lowest;
-                }
-
-                river.push(current);
+                // // Make sure it's lower than us
+                // if map.heightmap[lowest] > map.heightmap[current] {
+                //     // TODO: Spawn a lake here
+                //     break;
+                // } else {
+                //     current = lowest;
+                // }
+                current = lowest;
 
                 // Check if we've reached water
                 if map.heightmap[current] <= crate::SEA_LEVEL {
                     break;
                 }
+
+                river.push(current);
             } else {
                 break;
             }
