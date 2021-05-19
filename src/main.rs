@@ -22,6 +22,8 @@ fn draw_map(map: &Map, i: u64) {
         let color = if height <= SEA_LEVEL {
             ocean
         } else {
+            let bands = 8.0;
+            let height = (height * bands).floor() / bands;
             image::Rgb([
                 108.0.lerp(255., height) as u8,
                 152.0.lerp(255., height) as u8,
