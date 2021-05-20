@@ -14,7 +14,11 @@ fn draw_map(map: &Map, i: u64) {
 
     let ocean = image::Rgb([70_u8, 107, 159]);
 
-    draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(map.width(), map.height()), ocean);
+    draw_filled_rect_mut(
+        &mut img,
+        Rect::at(0, 0).of_size(map.width(), map.height()),
+        ocean,
+    );
 
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let height = map.get_elevation(x, y);
@@ -28,7 +32,7 @@ fn draw_map(map: &Map, i: u64) {
                 108.0.lerp(255., height) as u8,
                 152.0.lerp(255., height) as u8,
                 95.0.lerp(255., height) as u8,
-                ])
+            ])
         };
 
         *pixel = color;
@@ -37,7 +41,12 @@ fn draw_map(map: &Map, i: u64) {
     // Draw rivers
     let river = image::Rgb([70_u8, 107, 159]);
     for ((x1, y1), (x2, y2)) in map.get_river_segments() {
-        draw_line_segment_mut(&mut img, (x1 as f32, y1 as f32), (x2 as f32, y2 as f32), river);
+        draw_line_segment_mut(
+            &mut img,
+            (x1 as f32, y1 as f32),
+            (x2 as f32, y2 as f32),
+            river,
+        );
     }
 
     let sand = image::Rgb([160_u8, 144, 119]);

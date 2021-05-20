@@ -1,9 +1,9 @@
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 
+mod elevation;
 mod gradient;
 mod watershed;
-mod elevation;
 use elevation::Elevation;
 
 pub const SEA_LEVEL: f64 = 0.0;
@@ -13,7 +13,7 @@ pub struct Map {
     height: u32,
     //rng: Xoshiro256StarStar,
     elevation: Elevation,
-    coast: Vec<(u32,u32)>,
+    coast: Vec<(u32, u32)>,
     watersheds: Vec<watershed::Watershed>,
 }
 
@@ -43,10 +43,7 @@ impl Map {
     fn from_idx(&self, idx: usize) -> (u32, u32) {
         let idx = idx as u32;
 
-        (
-            idx / self.height(),
-            idx % self.height(),
-        )
+        (idx / self.height(), idx % self.height())
     }
 
     // fn find_coast(&mut self, heightmap: &mut Vec<Option<f64>>) {
@@ -107,7 +104,7 @@ impl Map {
         self.height
     }
 
-    fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item=(u32,u32)> {
+    fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
         let width = self.width;
         let height = self.height;
 
@@ -121,16 +118,17 @@ impl Map {
             (x.wrapping_add(1), y),
             (x.wrapping_add(1), y.wrapping_add(1)),
         ]
-            .into_iter()
-            .filter(move |(x, y)| *x < width && *y < height)
+        .into_iter()
+        .filter(move |(x, y)| *x < width && *y < height)
     }
 
-    pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32,u32)> {
+    pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32, u32)> {
         &self.coast
     }
 
     pub fn get_river_segments(&self) -> Vec<((u32, u32), (u32, u32))> {
-        self.watersheds.iter()
+        self.watersheds
+            .iter()
             .map(|watershed| watershed.river_segments())
             .flatten()
             .map(|(start, end)| {
@@ -163,7 +161,13 @@ mod tests {
 
                 //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
 
-                assert_eq!((x, y), (x2, y2), "{:?} and {:?} aren't the same!", (x, y), (x2, y2));
+                assert_eq!(
+                    (x, y),
+                    (x2, y2),
+                    "{:?} and {:?} aren't the same!",
+                    (x, y),
+                    (x2, y2)
+                );
                 assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
             }
         }
@@ -181,7 +185,13 @@ mod tests {
 
                 //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
 
-                assert_eq!((x, y), (x2, y2), "{:?} and {:?} aren't the same!", (x, y), (x2, y2));
+                assert_eq!(
+                    (x, y),
+                    (x2, y2),
+                    "{:?} and {:?} aren't the same!",
+                    (x, y),
+                    (x2, y2)
+                );
                 assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
             }
         }
@@ -196,7 +206,13 @@ mod tests {
 
                 //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
 
-                assert_eq!((x, y), (x2, y2), "{:?} and {:?} aren't the same!", (x, y), (x2, y2));
+                assert_eq!(
+                    (x, y),
+                    (x2, y2),
+                    "{:?} and {:?} aren't the same!",
+                    (x, y),
+                    (x2, y2)
+                );
                 assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
             }
         }

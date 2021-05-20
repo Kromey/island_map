@@ -52,8 +52,8 @@ impl Gradient {
         let point1 = Point { x: 0.5, y: 0.5 };
 
         for _ in 0..num_layers {
-            // Generate a random angle anywhere in the circle
-            let angle1 = rng.gen_range(0.0..TAU); // 0 - 2π (full circle)
+            // Generate a random angle anywhere in the circle (0 - 2π is a full circle)
+            let angle1 = rng.gen_range(0.0..TAU);
             // Generate a second angle somewhere between "close" and "opposite"
             let angle2 = angle1 + rng.gen_range((PI / 4.0)..PI);
 
@@ -90,9 +90,7 @@ impl Gradient {
             layers.push(Layer([point1, point2, point3, point4]));
         }
 
-        Gradient {
-            layers,
-        }
+        Gradient { layers }
     }
 
     /// Get the gradient's value at point (x, y).
@@ -103,13 +101,10 @@ impl Gradient {
     pub fn at(&self, x: f64, y: f64) -> f64 {
         // Get the gradient value at this point
         let mut pow = 3;
-        
-        self.layers
-            .iter()
-            .fold(0.0, |sum, layer| {
-                pow += 1;
-                sum + layer.at(x, y).powi(pow / 2)
-            })
-            / self.layers.len() as f64
+
+        self.layers.iter().fold(0.0, |sum, layer| {
+            pow += 1;
+            sum + layer.at(x, y).powi(pow / 2)
+        }) / self.layers.len() as f64
     }
 }

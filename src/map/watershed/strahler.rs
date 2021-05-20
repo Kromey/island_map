@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign};
 
 /// Strahler Number
-/// 
+///
 /// https://en.wikipedia.org/wiki/Strahler_number#River_networks
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Strahler(u32);

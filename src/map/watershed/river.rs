@@ -23,7 +23,8 @@ impl River {
         loop {
             // Find the lowest neighbor
             let (x, y) = map.from_idx(current);
-            if let Some(lowest) = map.get_neighbors(x, y)
+            if let Some(lowest) = map
+                .get_neighbors(x, y)
                 .into_iter()
                 .filter_map(|(x, y)| {
                     let idx = map.to_idx(x, y);
@@ -71,21 +72,20 @@ impl River {
     pub fn merge(&mut self, other: River) {
         self.add_branch(other.river);
     }
-    
+
     pub fn add_branch(&mut self, branch: Vec<usize>) {
-        let (downstream, mut upstream): (Vec<usize>, Vec<usize>) = branch
-            .into_iter()
-            .partition(|i| self.river.contains(i));
-            
+        let (downstream, mut upstream): (Vec<usize>, Vec<usize>) =
+            branch.into_iter().partition(|i| self.river.contains(i));
+
         if upstream.len() == 0 || downstream.len() == self.river.len() {
             self.river.append(&mut upstream);
             self.order.resize_with(self.river.len(), Default::default);
 
             return;
         }
-        
+
         let split_idx = downstream.len() - 1;
-        
+
         for (idx, branch) in self.branches.iter_mut() {
             if *idx == split_idx && upstream[0] == branch.river[0] {
                 branch.add_branch(upstream);
@@ -94,13 +94,8 @@ impl River {
                 return;
             }
         }
-            
-        self.branches.push(
-            (
-                split_idx,
-                Self::from(upstream),
-            )
-        );
+
+        self.branches.push((split_idx, Self::from(upstream)));
 
         self.update_order(split_idx);
     }
@@ -120,29 +115,30 @@ impl River {
         }
 
         // Now clean up our branches
-        self.branches.retain(|(_, branch)| branch.order() > Strahler::from(0));
+        self.branches
+            .retain(|(_, branch)| branch.order() > Strahler::from(0));
         for (_, branch) in self.branches.iter_mut() {
             branch.prune();
         }
 
         true
     }
-    
+
     pub fn segments(&self) -> Vec<(usize, usize)> {
         let mut segments = Vec::new();
         let mut prev = self.river[0];
         for &cur in self.river.iter().skip(1) {
             segments.push((prev, cur));
-            
+
             prev = cur;
         }
-        
+
         for (idx, branch) in self.branches.iter() {
             segments.push((self.river[*idx], branch.river[0]));
-            
+
             segments.append(&mut branch.segments());
         }
-        
+
         segments
     }
 
@@ -162,13 +158,17 @@ impl River {
         let mut upstream = *self.order.get(to_idx + 1).unwrap_or(&Strahler::from(0));
 
         for (idx, order) in self.order.iter_mut().enumerate().take(to_idx + 1).rev() {
-            let mut orders: Vec<_> = self.branches.iter().filter_map(|(split_idx, branch)| {
-                if *split_idx == idx {
-                    Some(branch.order())
-                } else {
-                    None
-                }
-            }).collect();
+            let mut orders: Vec<_> = self
+                .branches
+                .iter()
+                .filter_map(|(split_idx, branch)| {
+                    if *split_idx == idx {
+                        Some(branch.order())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
             if !orders.is_empty() {
                 orders.push(upstream);
 
@@ -179,7 +179,8 @@ impl River {
                 // order i can only be achieved when two or more children are i-1
                 orders.sort();
 
-                upstream = orders.into_iter().reduce(std::ops::Add::add).unwrap(); // We know it's not empty so this will never panic
+                upstream = orders.into_iter().reduce(std::ops::Add::add).unwrap();
+                // We know it's not empty so this will never panic
             }
 
             *order = upstream;

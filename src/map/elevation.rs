@@ -1,8 +1,8 @@
+use super::gradient::Gradient;
 use bracket_noise::prelude::*;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 use std::ops::Index;
-use super::gradient::Gradient;
 
 pub type Height = f64;
 
@@ -14,8 +14,10 @@ pub struct Elevation {
 
 impl Elevation {
     pub fn new(rng: &mut Xoshiro256StarStar, width: u32, height: u32) -> Self {
+        // Our gradient helps define our overall island shape
         let gradient = Gradient::new(rng, 4);
 
+        // Noise gives us natural-looking terrain
         // I have no idea what these parameters do!
         // They're stolen directly from https://github.com/amethyst/bracket-lib/blob/master/bracket-noise/examples/simplex_fractal.rs
         // They do seem to give me results I like, though!
@@ -27,11 +29,12 @@ impl Elevation {
         noise.set_fractal_lacunarity(2.0);
         noise.set_frequency(2.0);
 
+        // A closure to allow us to easily use noise+gradient to calculate the base height
         let raw_height = move |x: f64, y: f64| -> f64 {
             // Get a noise value, and "pull" it up
             let mut noise = noise.get_noise(x as f32, y as f32) as f64;
             noise = (noise + 0.5) / 2.0;
-    
+
             // Add our gradient
             noise + gradient.at(x, y)
         };
@@ -42,11 +45,14 @@ impl Elevation {
             height,
         };
 
+        // Scale our (x, y) by the smallest of width or height
         let scale = f64::from(std::cmp::min(width, height));
 
         // Compute sea level to ensure a water border
         let sea_level = {
+            // Establish the width of our water border
             let perimeter = 15;
+            // Initialize sea level to a point we know will be within our border
             let mut sea_level = raw_height(0.0, 0.0);
 
             for x in 0..width {
@@ -68,6 +74,7 @@ impl Elevation {
                 }
             }
 
+            // Since we've already tackled x to with {perimiter} of top and bottom, we can limit y
             for y in perimeter..(height - perimeter) {
                 let y = f64::from(y) / scale;
 
@@ -87,9 +94,11 @@ impl Elevation {
                 }
             }
 
-            sea_level + 0.05
+            // Give our sea level just a slight nudge
+            sea_level + 0.01
         };
 
+        // Find our max height so we can normalize our elevations
         let mut max_height = 0.0;
         for x in 0..width {
             // Pre-compute these values before entering the inner (y) loop
@@ -110,7 +119,9 @@ impl Elevation {
 
         // Normalize above-sea heights to [0.0, 1.0]
         for elev in elevation.elevation.iter_mut() {
-            *elev /= max_height;
+            if *elev > 0.0 {
+                *elev /= max_height;
+            }
         }
 
         elevation
