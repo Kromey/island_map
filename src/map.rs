@@ -3,7 +3,7 @@ use rand_xoshiro::Xoshiro256StarStar;
 
 mod elevation;
 mod gradient;
-mod watershed;
+//mod watershed;
 use elevation::Elevation;
 
 pub const SEA_LEVEL: f64 = 0.0;
@@ -13,7 +13,7 @@ pub struct Map {
     height: u32,
     //rng: Xoshiro256StarStar,
     elevation: Elevation,
-    watersheds: Vec<watershed::Watershed>,
+    //watersheds: Vec<watershed::Watershed>,
 }
 
 impl Map {
@@ -26,10 +26,10 @@ impl Map {
             height,
             //rng,
             elevation,
-            watersheds: Vec::new(),
+            //watersheds: Vec::new(),
         };
 
-        map.watersheds = watershed::Watershed::create_all(&map);
+        //map.watersheds = watershed::Watershed::create_all(&map);
 
         map
     }
@@ -52,41 +52,41 @@ impl Map {
         self.height
     }
 
-    fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
-        let width = self.width;
-        let height = self.height;
+    // fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
+    //     let width = self.width;
+    //     let height = self.height;
 
-        vec![
-            (x.wrapping_sub(1), y.wrapping_sub(1)),
-            (x.wrapping_sub(1), y),
-            (x.wrapping_sub(1), y.wrapping_add(1)),
-            (x, y.wrapping_sub(1)),
-            (x, y.wrapping_add(1)),
-            (x.wrapping_add(1), y.wrapping_sub(1)),
-            (x.wrapping_add(1), y),
-            (x.wrapping_add(1), y.wrapping_add(1)),
-        ]
-        .into_iter()
-        .filter(move |(x, y)| *x < width && *y < height)
-    }
+    //     vec![
+    //         (x.wrapping_sub(1), y.wrapping_sub(1)),
+    //         (x.wrapping_sub(1), y),
+    //         (x.wrapping_sub(1), y.wrapping_add(1)),
+    //         (x, y.wrapping_sub(1)),
+    //         (x, y.wrapping_add(1)),
+    //         (x.wrapping_add(1), y.wrapping_sub(1)),
+    //         (x.wrapping_add(1), y),
+    //         (x.wrapping_add(1), y.wrapping_add(1)),
+    //     ]
+    //     .into_iter()
+    //     .filter(move |(x, y)| *x < width && *y < height)
+    // }
 
     pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32, u32)> {
         &self.elevation.get_coast()
     }
 
-    pub fn get_river_segments(&self) -> Vec<((u32, u32), (u32, u32))> {
-        self.watersheds
-            .iter()
-            .map(|watershed| watershed.river_segments())
-            .flatten()
-            .map(|(start, end)| {
-                let (x1, y1) = self.from_idx(start);
-                let (x2, y2) = self.from_idx(end);
+    // pub fn get_river_segments(&self) -> Vec<((u32, u32), (u32, u32))> {
+    //     self.watersheds
+    //         .iter()
+    //         .map(|watershed| watershed.river_segments())
+    //         .flatten()
+    //         .map(|(start, end)| {
+    //             let (x1, y1) = self.from_idx(start);
+    //             let (x2, y2) = self.from_idx(end);
 
-                ((x1, y1), (x2, y2))
-            })
-            .collect()
-    }
+    //             ((x1, y1), (x2, y2))
+    //         })
+    //         .collect()
+    // }
 
     pub fn get_elevation(&self, x: u32, y: u32) -> f64 {
         self.elevation[(x, y)]

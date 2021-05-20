@@ -35,16 +35,16 @@ fn draw_map(map: &Map, i: u64) {
         *pixel = color;
     }
 
-    // Draw rivers
-    let river = image::Rgb([70_u8, 107, 159]);
-    for ((x1, y1), (x2, y2)) in map.get_river_segments() {
-        draw_line_segment_mut(
-            &mut img,
-            (x1 as f32, y1 as f32),
-            (x2 as f32, y2 as f32),
-            river,
-        );
-    }
+    // // Draw rivers
+    // let river = image::Rgb([70_u8, 107, 159]);
+    // for ((x1, y1), (x2, y2)) in map.get_river_segments() {
+    //     draw_line_segment_mut(
+    //         &mut img,
+    //         (x1 as f32, y1 as f32),
+    //         (x2 as f32, y2 as f32),
+    //         river,
+    //     );
+    // }
 
     let sand = image::Rgb([160_u8, 144, 119]);
     for (x, y) in map.get_coast() {

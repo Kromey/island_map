@@ -239,7 +239,7 @@ impl Elevation {
         (idx / self.height, idx % self.height)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &f64> {
+    pub fn _iter(&self) -> impl Iterator<Item = &f64> {
         self.elevation.iter()
     }
 
