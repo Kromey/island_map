@@ -13,7 +13,6 @@ pub struct Map {
     height: u32,
     //rng: Xoshiro256StarStar,
     elevation: Elevation,
-    coast: Vec<(u32, u32)>,
     watersheds: Vec<watershed::Watershed>,
 }
 
@@ -27,7 +26,6 @@ impl Map {
             height,
             //rng,
             elevation,
-            coast: Vec::new(),
             watersheds: Vec::new(),
         };
 
@@ -45,56 +43,6 @@ impl Map {
 
         (idx / self.height(), idx % self.height())
     }
-
-    // fn find_coast(&mut self, heightmap: &mut Vec<Option<f64>>) {
-    //     let mut coast = Vec::with_capacity(heightmap.len() / 4);
-    //     let mut active = vec![(0, 0)];
-
-    //     while let Some((x, y)) = active.pop() {
-    //         for (x, y) in self.get_neighbors(x, y) {
-    //             if heightmap[self.to_idx(x, y)].is_some() {
-    //                 continue;
-    //             }
-
-    //             let height = self.height_from_gradient(x as f64, y as f64);
-    //             heightmap[self.to_idx(x, y)] = Some(height);
-
-    //             if height > SEA_LEVEL {
-    //                 coast.push((x as u32, y as u32));
-    //             } else {
-    //                 active.push((x, y));
-    //             }
-    //         }
-    //     }
-
-    //     coast.shrink_to_fit();
-    //     self.coast = coast;
-    // }
-
-    // fn get_lake(&self, x: u32, y: u32, lake_height: f64, heightmap: &mut Vec<Option<f64>>) -> Vec<(u32, u32)> {
-    //     let mut lake_frontier = Vec::new();
-    //     let mut active = vec![(x, y)];
-
-    //     while let Some((x, y)) = active.pop() {
-    //         for (x, y) in self.get_neighbors(x, y) {
-    //             let idx = self.to_idx(x, y);
-    //             if heightmap[idx].is_some() {
-    //                 continue;
-    //             }
-
-    //             let height = self.height_from_gradient(f64::from(x), f64::from(y));
-    //             heightmap[idx] = Some(lake_height);
-
-    //             if height > SEA_LEVEL {
-    //                 lake_frontier.push((x as u32, y as u32));
-    //             } else {
-    //                 active.push((x, y));
-    //             }
-    //         }
-    //     }
-
-    //     lake_frontier
-    // }
 
     pub fn width(&self) -> u32 {
         self.width
@@ -123,7 +71,7 @@ impl Map {
     }
 
     pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32, u32)> {
-        &self.coast
+        &self.elevation.get_coast()
     }
 
     pub fn get_river_segments(&self) -> Vec<((u32, u32), (u32, u32))> {

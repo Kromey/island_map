@@ -8,6 +8,7 @@ pub type Height = f64;
 
 pub struct Elevation {
     elevation: Vec<Height>,
+    coast: Vec<(u32, u32)>,
     width: u32,
     height: u32,
 }
@@ -41,6 +42,7 @@ impl Elevation {
 
         let mut elevation = Elevation {
             elevation: vec![0.0; (width * height) as usize],
+            coast: Vec::new(),
             width,
             height,
         };
@@ -124,15 +126,125 @@ impl Elevation {
             }
         }
 
+        // Find the coast
+        let mut ocean = vec![false; elevation.elevation.len()];
+        elevation.coast = {
+            let mut coast = Vec::with_capacity((width * height / 4) as usize);
+            let mut active = vec![(0, 0)];
+
+            while let Some((x, y)) = active.pop() {
+                for (x, y) in elevation.get_neighbors(x, y) {
+                    let idx = elevation.to_idx(x, y);
+                    if ocean[idx] {
+                        continue;
+                    }
+
+                    ocean[idx] = true;
+
+                    if elevation[idx] > super::SEA_LEVEL {
+                        coast.push((x as u32, y as u32));
+                    } else {
+                        active.push((x, y));
+                    }
+                }
+            }
+
+            coast.shrink_to_fit();
+            coast
+        };
+
+        // Now we can find inland lakes and raise them up
+        let mut lakes = Vec::new();
+        let mut visited = vec![false; ocean.len()];
+        for (idx, (elev, is_ocean)) in elevation.elevation.iter().zip(ocean).enumerate() {
+            // We only care about non-ocean points below sea level
+            if is_ocean || *elev > super::SEA_LEVEL {
+                continue;
+            }
+            // Make sure we haven't already visited this one
+            let xy = elevation.from_idx(idx);
+            if visited[idx] {
+                continue;
+            }
+
+            let mut lake = Vec::new();
+            let mut active = vec![xy];
+            // Set a really high initial value; we know our elevations<=1.0, so we're guaranteed to
+            // find one lower than this
+            let mut shore: f64 = 100.0;
+
+            while let Some((x, y)) = active.pop() {
+                for (x, y) in elevation.get_neighbors(x, y) {
+                    // Make sure we haven't already visited this one
+                    let idx = elevation.to_idx(x, y);
+                    if visited[idx] {
+                        continue;
+                    }
+                    // Mark it as visited so we don't re-visit
+                    visited[idx] = true;
+
+                    let elev = elevation[(x, y)];
+                    if elev > super::SEA_LEVEL {
+                        // Found a new shore point, check if it's lower
+                        if elev < shore {
+                            shore = elev;
+                        }
+                    } else {
+                        // Add this point to our lake
+                        lake.push(idx);
+                        // Also add to our active list so we can test its neighbors too
+                        active.push((x, y));
+                    }
+                }
+            }
+            // Because we're inside an iterator on elevation.elevation, we can't mutate it
+            // So stash our lake for later update
+            lakes.push((shore, lake));
+        }
+        // Now that we've found our lakes, pull them up to the height of their lowest shore point
+        for (shore, lake) in lakes {
+            for idx in lake {
+                elevation.elevation[idx] = shore;
+            }
+        }
+
         elevation
+    }
+
+    fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
+        let width = self.width;
+        let height = self.height;
+
+        vec![
+            (x.wrapping_sub(1), y.wrapping_sub(1)),
+            (x.wrapping_sub(1), y),
+            (x.wrapping_sub(1), y.wrapping_add(1)),
+            (x, y.wrapping_sub(1)),
+            (x, y.wrapping_add(1)),
+            (x.wrapping_add(1), y.wrapping_sub(1)),
+            (x.wrapping_add(1), y),
+            (x.wrapping_add(1), y.wrapping_add(1)),
+        ]
+        .into_iter()
+        .filter(move |(x, y)| *x < width && *y < height)
     }
 
     fn to_idx(&self, x: u32, y: u32) -> usize {
         (x * self.height + y) as usize
     }
 
+    fn from_idx(&self, idx: usize) -> (u32, u32) {
+        let idx = idx as u32;
+
+        (idx / self.height, idx % self.height)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &f64> {
         self.elevation.iter()
+    }
+
+    pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32, u32)> {
+        &self.coast
     }
 }
 
