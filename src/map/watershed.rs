@@ -15,7 +15,7 @@ pub struct Watershed {
 
 impl Watershed {
     pub fn create_all(map: &super::Map) -> Vec<Watershed> {
-        let mut seeds: Vec<_> = map.heightmap
+        let mut seeds: Vec<_> = map.elevation
             .iter()
             .enumerate()
             .filter(|&(_, &h)| h > WATERSHED_START)

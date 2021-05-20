@@ -17,7 +17,7 @@ fn draw_map(map: &Map, i: u64) {
     draw_filled_rect_mut(&mut img, Rect::at(0, 0).of_size(map.width(), map.height()), ocean);
 
     for (x, y, pixel) in img.enumerate_pixels_mut() {
-        let height = map.get_height(x, y);
+        let height = map.get_elevation(x, y);
 
         let color = if height <= SEA_LEVEL {
             ocean

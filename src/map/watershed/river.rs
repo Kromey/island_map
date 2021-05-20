@@ -34,7 +34,7 @@ impl River {
                     }
                 })
                 .min_by(|&idx1, &idx2| {
-                    if map.heightmap[idx1] < map.heightmap[idx2] {
+                    if map.elevation[idx1] < map.elevation[idx2] {
                         std::cmp::Ordering::Less
                     } else {
                         std::cmp::Ordering::Greater
@@ -51,7 +51,7 @@ impl River {
                 current = lowest;
 
                 // Check if we've reached water
-                if map.heightmap[current] <= crate::SEA_LEVEL {
+                if map.elevation[current] <= crate::SEA_LEVEL {
                     break;
                 }
 
