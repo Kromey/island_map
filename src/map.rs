@@ -1,5 +1,4 @@
 use bracket_noise::prelude::*;
-use lerp::Lerp;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 
@@ -105,13 +104,11 @@ impl Map {
 
         let mut max_height: f64 = 0.0;
 
-        for i in 0.. {
+        for _ in 0.. {
             if frontier.is_empty() {
                 break;
             }
             next_frontier.clear();
-            // Add 1 because we're actually going to be computing the *next* level
-            let dist = f64::from(i + 1).sqrt();
 
             while let Some((x, y)) = frontier.pop() {
                 // Get the height of our current frontier point, which will become the height of any lakes we might touch
@@ -120,9 +117,10 @@ impl Map {
                 for (x, y) in self.get_neighbors(x, y) {
                     let idx = self.to_idx(x, y);
                     if heightmap[idx].is_none() {
-                        let height = self.height_from_gradient(f64::from(x), f64::from(y)) * dist / height_scale;
+                        let height = self.height_from_gradient(f64::from(x), f64::from(y)) / height_scale;
 
                         if height <= SEA_LEVEL {
+                            heightmap[idx] = Some(frontier_height);
                             next_frontier.append(&mut self.get_lake(x, y, frontier_height, heightmap));
                             continue;
                         }
@@ -158,7 +156,6 @@ impl Map {
                 if height > SEA_LEVEL {
                     lake_frontier.push((x as u32, y as u32));
                 } else {
-                    heightmap[idx] = Some(lake_height);
                     active.push((x, y));
                 }
             }
@@ -185,9 +182,10 @@ impl Map {
 
         // Get a noise value, and "pull" it up
         let mut noise = self.noise.get_noise(x as f32, y as f32) as f64;
-        noise = noise.lerp(0.5, 0.5);
-        // Lerp it towards a point below sea level, using our gradient as the t-value
-        (-0.2).lerp(noise, gradient)
+        noise = (noise + 0.5) / 2.0;
+        
+        //TODO: Make sea level dynamic so we can remove this hard-coded offset
+        gradient + noise - 0.6
     }
 
     fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item=(u32,u32)> {

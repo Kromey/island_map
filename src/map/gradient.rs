@@ -1,4 +1,3 @@
-use lerp::Lerp;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 use std::f64::consts::{PI, TAU};
@@ -72,7 +71,7 @@ impl Gradient {
             };
 
             // Our third angle is between our first two...
-            let mut angle3 = angle1.lerp(angle2, 0.5);
+            let mut angle3 = (angle1 + angle2) / 2.0;
             if rng.gen() {
                 // ...50% chance of being "between" on the "long side" instead
                 angle3 += PI; // Adding π (in radians) is same as adding 180⁰ (in degrees)
