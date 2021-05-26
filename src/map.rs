@@ -1,6 +1,6 @@
+use nalgebra as na;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use nalgebra as na;
 
 mod elevation;
 mod gradient;
@@ -109,7 +109,7 @@ impl Map {
         let bt = self.elevation[(x, y - 1)] - self.elevation[(x, y + 1)];
 
         // TODO: Average with the normal using the diagonal neighbors too?
-        
+
         na::Vector3::new(rl * scale, bt * scale, -2.0).normalize()
     }
 }
