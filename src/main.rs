@@ -1,6 +1,7 @@
-use imageproc::drawing::{draw_filled_rect_mut, draw_line_segment_mut};
+use imageproc::drawing::draw_filled_rect_mut;
 use imageproc::rect::Rect;
-use lerp::Lerp;
+//use lerp::Lerp;
+use nalgebra as na;
 
 mod map;
 use map::{Map, SEA_LEVEL};
@@ -16,6 +17,9 @@ fn draw_map(map: &Map, i: u64) {
         ocean,
     );
 
+    // Directional light sources are represented as unit vectors
+    let sun = na::Vector3::new(-0.25, 0.75, -1.5).normalize();
+
     // Draw terrain
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let height = map.get_elevation(x, y);
@@ -23,12 +27,25 @@ fn draw_map(map: &Map, i: u64) {
         let color = if height <= SEA_LEVEL {
             continue;
         } else {
-            let bands = 8.0;
-            let height = (height * bands).floor() / bands;
+            // let bands = 8.0;
+            // let height = (height * bands).floor() / bands;
+            // image::Rgb([
+            //     108.0.lerp(255., height) as u8,
+            //     152.0.lerp(255., height) as u8,
+            //     95.0.lerp(255., height) as u8,
+            // ])
+
+            // Apply diffuse lighting to the terrain by finding the normal at this pixel
+            let normal = map.get_normal(x, y, 70.0);
+            // The dot product of 2 unit vectors is the same as the cos of the angle between them
+            // http://learnwebgl.brown37.net/09_lights/lights_diffuse.html
+            let light = normal.dot(&sun).clamp(0.0, 1.0);
+            // Each of the RGB components is multiplied by the dot product (acting as a percentage
+            // of the light hitting the surface)
             image::Rgb([
-                108.0.lerp(255., height) as u8,
-                152.0.lerp(255., height) as u8,
-                95.0.lerp(255., height) as u8,
+                (108.0 * light) as u8,
+                (152.0 * light) as u8,
+                (95.0 * light) as u8,
             ])
         };
 

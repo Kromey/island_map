@@ -1,5 +1,6 @@
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
+use nalgebra as na;
 
 mod elevation;
 mod gradient;
@@ -21,7 +22,7 @@ impl Map {
         let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
         let elevation = Elevation::new(&mut rng, width, height);
 
-        let mut map = Map {
+        let map = Map {
             width,
             height,
             //rng,
@@ -34,10 +35,12 @@ impl Map {
         map
     }
 
+    #[allow(dead_code)]
     fn to_idx(&self, x: u32, y: u32) -> usize {
         (x * self.height() + y) as usize
     }
 
+    #[allow(dead_code)]
     fn from_idx(&self, idx: usize) -> (u32, u32) {
         let idx = idx as u32;
 
@@ -90,6 +93,24 @@ impl Map {
 
     pub fn get_elevation(&self, x: u32, y: u32) -> f64 {
         self.elevation[(x, y)]
+    }
+
+    pub fn get_normal(&self, x: u32, y: u32, scale: f64) -> na::Vector3<f64> {
+        // Assign a vertical unit vector to the ocean
+        if self.elevation[(x, y)] <= SEA_LEVEL {
+            return na::Vector3::new(0.0, 0.0, -1.0);
+        }
+
+        // Calculate normal for discretized heigh map
+        // https://stackoverflow.com/questions/49640250/calculate-normals-from-heightmap
+        // Because we know our edges are ocean, and thus handled above, we don't need to guard for
+        // underflows or overflows when getting neighbors here
+        let rl = self.elevation[(x + 1, y)] - self.elevation[(x - 1, y)];
+        let bt = self.elevation[(x, y - 1)] - self.elevation[(x, y + 1)];
+
+        // TODO: Average with the normal using the diagonal neighbors too?
+        
+        na::Vector3::new(rl * scale, bt * scale, -2.0).normalize()
     }
 }
 
