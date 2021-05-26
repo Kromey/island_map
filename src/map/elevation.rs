@@ -2,7 +2,7 @@ use super::gradient::Gradient;
 use bracket_noise::prelude::*;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 pub type Height = f64;
 
@@ -115,7 +115,7 @@ impl Elevation {
                 if height > max_height {
                     max_height = height;
                 }
-                elevation.elevation[idx] = height;
+                elevation[idx] = height;
             }
         }
 
@@ -204,7 +204,7 @@ impl Elevation {
         // Now that we've found our lakes, pull them up to the height of their lowest shore point
         for (shore, lake) in lakes {
             for idx in lake {
-                elevation.elevation[idx] = shore;
+                elevation[idx] = shore;
             }
         }
 
@@ -264,5 +264,22 @@ impl Index<(u32, u32)> for Elevation {
         assert!(key.1 < self.height);
 
         &self[self.to_idx(key.0, key.1)]
+    }
+}
+
+impl IndexMut<usize> for Elevation {
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+        &mut self.elevation[idx]
+    }
+}
+
+impl IndexMut<(u32, u32)> for Elevation {
+    fn index_mut(&mut self, key: (u32, u32)) -> &mut Self::Output {
+        assert!(key.0 < self.width);
+        assert!(key.1 < self.height);
+
+        let idx = self.to_idx(key.0, key.1);
+
+        &mut self[idx]
     }
 }
