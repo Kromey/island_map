@@ -73,6 +73,7 @@ impl Map {
     //     .filter(move |(x, y)| *x < width && *y < height)
     // }
 
+    #[allow(dead_code)]
     pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32, u32)> {
         &self.elevation.get_coast()
     }
@@ -101,7 +102,7 @@ impl Map {
             return na::Vector3::new(0.0, 0.0, -1.0);
         }
 
-        // Calculate normal for discretized heigh map
+        // Calculate normal for a height map using central differencing
         // https://stackoverflow.com/questions/49640250/calculate-normals-from-heightmap
         // Because we know our edges are ocean, and thus handled above, we don't need to guard for
         // underflows or overflows when getting neighbors here

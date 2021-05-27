@@ -1,5 +1,5 @@
-use imageproc::drawing::draw_filled_rect_mut;
-use imageproc::rect::Rect;
+// use imageproc::drawing::draw_filled_rect_mut;
+// use imageproc::rect::Rect;
 //use lerp::Lerp;
 use nalgebra as na;
 
@@ -9,13 +9,13 @@ use map::{Map, SEA_LEVEL};
 fn draw_map(map: &Map, i: u64) {
     let mut img = image::ImageBuffer::new(map.width(), map.height());
 
-    let ocean = image::Rgb([70_u8, 107, 159]);
+    // let ocean = image::Rgb([70_u8, 107, 159]);
 
-    draw_filled_rect_mut(
-        &mut img,
-        Rect::at(0, 0).of_size(map.width(), map.height()),
-        ocean,
-    );
+    // draw_filled_rect_mut(
+    //     &mut img,
+    //     Rect::at(0, 0).of_size(map.width(), map.height()),
+    //     ocean,
+    // );
 
     // Directional light sources are represented as unit vectors
     let sun = na::Vector3::new(-0.25, 0.75, -1.5).normalize();
@@ -25,7 +25,12 @@ fn draw_map(map: &Map, i: u64) {
         let height = map.get_elevation(x, y);
 
         let color = if height <= SEA_LEVEL {
-            continue;
+            let height = 1.0 + height / 3.0;
+            image::Rgb([
+                (70.0 * height) as u8,
+                (107.0 * height) as u8,
+                (159.0 * height) as u8,
+            ])
         } else {
             // let bands = 8.0;
             // let height = (height * bands).floor() / bands;
@@ -63,10 +68,10 @@ fn draw_map(map: &Map, i: u64) {
     //     );
     // }
 
-    let sand = image::Rgb([160_u8, 144, 119]);
-    for (x, y) in map.get_coast() {
-        img.put_pixel(*x, *y, sand);
-    }
+    // let sand = image::Rgb([160_u8, 144, 119]);
+    // for (x, y) in map.get_coast() {
+    //     img.put_pixel(*x, *y, sand);
+    // }
 
     img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();
 }
