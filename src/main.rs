@@ -7,7 +7,7 @@ mod map;
 use map::{Map, SEA_LEVEL};
 
 fn draw_map(map: &Map, i: u64) {
-    let mut img = image::ImageBuffer::new(map.width(), map.height());
+    let mut img = image::ImageBuffer::new(map.size(), map.size());
 
     // let ocean = image::Rgb([70_u8, 107, 159]);
 
@@ -77,13 +77,12 @@ fn draw_map(map: &Map, i: u64) {
 }
 
 fn main() {
-    let img_x = 800;
-    let img_y = 800;
+    let size = 800;
 
     for seed in 0..12 {
         println!("Generating island {}...", seed + 1);
 
-        let map = Map::new(seed, img_x, img_y);
+        let map = Map::new(seed, size);
 
         draw_map(&map, seed);
     }

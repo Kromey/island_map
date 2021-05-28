@@ -10,21 +10,19 @@ use elevation::Elevation;
 pub const SEA_LEVEL: f64 = 0.0;
 
 pub struct Map {
-    width: u32,
-    height: u32,
+    size: u32,
     //rng: Xoshiro256StarStar,
     elevation: Elevation,
     //watersheds: Vec<watershed::Watershed>,
 }
 
 impl Map {
-    pub fn new(seed: u64, width: u32, height: u32) -> Self {
+    pub fn new(seed: u64, size: u32) -> Self {
         let mut rng = Xoshiro256StarStar::seed_from_u64(seed);
-        let elevation = Elevation::new(&mut rng, width, height);
+        let elevation = Elevation::new(&mut rng, size);
 
         let map = Map {
-            width,
-            height,
+            size,
             //rng,
             elevation,
             //watersheds: Vec::new(),
@@ -36,23 +34,20 @@ impl Map {
     }
 
     #[allow(dead_code)]
+    #[inline(always)]
     fn to_idx(&self, x: u32, y: u32) -> usize {
-        (x * self.height() + y) as usize
+        self.elevation.to_idx(x, y)
     }
 
     #[allow(dead_code)]
+    #[inline(always)]
     fn from_idx(&self, idx: usize) -> (u32, u32) {
-        let idx = idx as u32;
-
-        (idx / self.height(), idx % self.height())
+        self.elevation.from_idx(idx)
     }
 
-    pub fn width(&self) -> u32 {
-        self.width
-    }
-
-    pub fn height(&self) -> u32 {
-        self.height
+    #[inline(always)]
+    pub fn size(&self) -> u32 {
+        self.size
     }
 
     // fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
@@ -92,6 +87,7 @@ impl Map {
     //         .collect()
     // }
 
+    #[inline(always)]
     pub fn get_elevation(&self, x: u32, y: u32) -> f64 {
         self.elevation[(x, y)]
     }
@@ -121,60 +117,14 @@ mod tests {
 
     #[test]
     fn to_and_from_idx() {
-        let map = Map::new(1, 20, 20);
+        let size = 20;
+        let map = Map::new(1, size);
 
-        for x in 0..20 {
-            for y in 0..20 {
+        for x in 0..size {
+            for y in 0..size {
                 let idx = map.to_idx(x, y);
                 let (x2, y2) = map.from_idx(idx);
                 let idx2 = map.to_idx(x2, y2);
-
-                //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
-
-                assert_eq!(
-                    (x, y),
-                    (x2, y2),
-                    "{:?} and {:?} aren't the same!",
-                    (x, y),
-                    (x2, y2)
-                );
-                assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
-            }
-        }
-    }
-
-    #[test]
-    fn to_and_from_uneven_idx() {
-        let map = Map::new(1, 20, 35);
-
-        for x in 0..20 {
-            for y in 0..35 {
-                let idx = map.to_idx(x, y);
-                let (x2, y2) = map.from_idx(idx);
-                let idx2 = map.to_idx(x2, y2);
-
-                //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
-
-                assert_eq!(
-                    (x, y),
-                    (x2, y2),
-                    "{:?} and {:?} aren't the same!",
-                    (x, y),
-                    (x2, y2)
-                );
-                assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
-            }
-        }
-
-        let map = Map::new(1, 35, 20);
-
-        for x in 0..35 {
-            for y in 0..20 {
-                let idx = map.to_idx(x, y);
-                let (x2, y2) = map.from_idx(idx);
-                let idx2 = map.to_idx(x2, y2);
-
-                //eprintln!("({},{}) ⇒ {} ⇒ ({},{}) ⇒ {}", x, y, idx, x2, y2, idx2);
 
                 assert_eq!(
                     (x, y),

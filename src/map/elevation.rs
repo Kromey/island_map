@@ -9,12 +9,11 @@ pub type Height = f64;
 pub struct Elevation {
     elevation: Vec<Height>,
     coast: Vec<(u32, u32)>,
-    width: u32,
-    height: u32,
+    size: u32,
 }
 
 impl Elevation {
-    pub fn new(rng: &mut Xoshiro256StarStar, width: u32, height: u32) -> Self {
+    pub fn new(rng: &mut Xoshiro256StarStar, size: u32) -> Self {
         // Our gradient helps define our overall island shape
         let gradient = Gradient::new(rng, 4);
 
@@ -41,14 +40,13 @@ impl Elevation {
         };
 
         let mut elevation = Elevation {
-            elevation: vec![0.0; (width * height) as usize],
+            elevation: vec![0.0; (size * size) as usize],
             coast: Vec::new(),
-            width,
-            height,
+            size,
         };
 
-        // Scale our (x, y) by the smallest of width or height
-        let scale = f64::from(std::cmp::min(width, height));
+        // Scale our (x, y) by our size
+        let scale = f64::from(size);
 
         // Compute sea level to ensure a water border
         let sea_level = {
@@ -57,12 +55,12 @@ impl Elevation {
             // Initialize sea level to a point we know will be within our border
             let mut sea_level = raw_height(0.0, 0.0);
 
-            for x in 0..width {
+            for x in 0..size {
                 let x = f64::from(x) / scale;
 
                 for dy in 0..perimeter {
                     let y1 = f64::from(dy) / scale;
-                    let y2 = f64::from(height - dy) / scale;
+                    let y2 = f64::from(size - dy) / scale;
 
                     let height = raw_height(x, y1);
                     if height > sea_level {
@@ -77,12 +75,12 @@ impl Elevation {
             }
 
             // Since we've already tackled x to with {perimiter} of top and bottom, we can limit y
-            for y in perimeter..(height - perimeter) {
+            for y in perimeter..(size - perimeter) {
                 let y = f64::from(y) / scale;
 
                 for dx in 0..perimeter {
                     let x1 = f64::from(dx) / scale;
-                    let x2 = f64::from(width - dx) / scale;
+                    let x2 = f64::from(size - dx) / scale;
 
                     let height = raw_height(x1, y);
                     if height > sea_level {
@@ -102,14 +100,14 @@ impl Elevation {
 
         // Find our max height so we can normalize our elevations
         let mut max_height = 0.0;
-        for x in 0..width {
-            // Pre-compute these values before entering the inner (y) loop
-            let idx = elevation.to_idx(x, 0);
-            let x = f64::from(x) / scale;
+        for y in 0..size {
+            // Pre-compute these values before entering the inner (x) loop
+            let idx = elevation.to_idx(0, y);
+            let y = f64::from(y) / scale;
 
-            for y in 0..height {
-                let idx = idx + y as usize; // Add y to the pre-computed index
-                let y = f64::from(y) / scale;
+            for x in 0..size {
+                let idx = idx + x as usize; // Add x to the pre-computed index
+                let x = f64::from(x) / scale;
 
                 let height = raw_height(x, y) - sea_level;
                 if height > max_height {
@@ -129,7 +127,7 @@ impl Elevation {
         // Find the coast
         let mut ocean = vec![false; elevation.elevation.len()];
         elevation.coast = {
-            let mut coast = Vec::with_capacity((width * height / 4) as usize);
+            let mut coast = Vec::with_capacity((size * size / 4) as usize);
             let mut active = vec![(0, 0)];
 
             while let Some((x, y)) = active.pop() {
@@ -212,8 +210,7 @@ impl Elevation {
     }
 
     fn get_neighbors(&self, x: u32, y: u32) -> impl Iterator<Item = (u32, u32)> {
-        let width = self.width;
-        let height = self.height;
+        let size = self.size;
 
         vec![
             (x.wrapping_sub(1), y.wrapping_sub(1)),
@@ -226,17 +223,19 @@ impl Elevation {
             (x.wrapping_add(1), y.wrapping_add(1)),
         ]
         .into_iter()
-        .filter(move |(x, y)| *x < width && *y < height)
+        .filter(move |(x, y)| *x < size && *y < size)
     }
 
-    fn to_idx(&self, x: u32, y: u32) -> usize {
-        (x * self.height + y) as usize
+    #[inline(always)]
+    pub fn to_idx(&self, x: u32, y: u32) -> usize {
+        (x + y * self.size) as usize
     }
 
-    fn from_idx(&self, idx: usize) -> (u32, u32) {
+    #[inline(always)]
+    pub fn from_idx(&self, idx: usize) -> (u32, u32) {
         let idx = idx as u32;
 
-        (idx / self.height, idx % self.height)
+        (idx % self.size, idx / self.size)
     }
 
     pub fn _iter(&self) -> impl Iterator<Item = &f64> {
@@ -260,8 +259,8 @@ impl Index<(u32, u32)> for Elevation {
     type Output = Height;
 
     fn index(&self, key: (u32, u32)) -> &Self::Output {
-        assert!(key.0 < self.width);
-        assert!(key.1 < self.height);
+        assert!(key.0 < self.size, "X coordinate is out of bounds!");
+        assert!(key.1 < self.size, "Y coordinate is out of bounds!");
 
         &self[self.to_idx(key.0, key.1)]
     }
@@ -275,11 +274,40 @@ impl IndexMut<usize> for Elevation {
 
 impl IndexMut<(u32, u32)> for Elevation {
     fn index_mut(&mut self, key: (u32, u32)) -> &mut Self::Output {
-        assert!(key.0 < self.width);
-        assert!(key.1 < self.height);
+        assert!(key.0 < self.size, "X coordinate is out of bounds!");
+        assert!(key.1 < self.size, "Y coordinate is out of bounds!");
 
         let idx = self.to_idx(key.0, key.1);
 
         &mut self[idx]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_and_from_idx() {
+        let mut rng = Xoshiro256StarStar::seed_from_u64(1337);
+        let size = 20;
+        let elev = Elevation::new(&mut rng, size);
+
+        for x in 0..size {
+            for y in 0..size {
+                let idx = elev.to_idx(x, y);
+                let (x2, y2) = elev.from_idx(idx);
+                let idx2 = elev.to_idx(x2, y2);
+
+                assert_eq!(
+                    (x, y),
+                    (x2, y2),
+                    "{:?} and {:?} aren't the same!",
+                    (x, y),
+                    (x2, y2)
+                );
+                assert_eq!(idx, idx2, "idx and idx2 aren't the same!");
+            }
+        }
     }
 }
