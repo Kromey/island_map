@@ -3,6 +3,7 @@ use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 
 mod elevation;
+mod erosion;
 mod gradient;
 //mod watershed;
 use elevation::Elevation;
@@ -11,7 +12,7 @@ pub const SEA_LEVEL: f64 = 0.0;
 
 pub struct Map {
     size: u32,
-    //rng: Xoshiro256StarStar,
+    rng: Xoshiro256StarStar,
     elevation: Elevation,
     //watersheds: Vec<watershed::Watershed>,
 }
@@ -23,7 +24,7 @@ impl Map {
 
         let map = Map {
             size,
-            //rng,
+            rng,
             elevation,
             //watersheds: Vec::new(),
         };
@@ -31,6 +32,10 @@ impl Map {
         //map.watersheds = watershed::Watershed::create_all(&map);
 
         map
+    }
+
+    pub fn erode(&mut self, cycles: u32) {
+        erosion::erode(&mut self.elevation, &mut self.rng, cycles);
     }
 
     #[allow(dead_code)]
@@ -92,22 +97,8 @@ impl Map {
         self.elevation[(x, y)]
     }
 
-    pub fn get_normal(&self, x: u32, y: u32, scale: f64) -> na::Vector3<f64> {
-        // Assign a vertical unit vector to the ocean
-        if self.elevation[(x, y)] <= SEA_LEVEL {
-            return na::Vector3::new(0.0, 0.0, -1.0);
-        }
-
-        // Calculate normal for a height map using central differencing
-        // https://stackoverflow.com/questions/49640250/calculate-normals-from-heightmap
-        // Because we know our edges are ocean, and thus handled above, we don't need to guard for
-        // underflows or overflows when getting neighbors here
-        let rl = self.elevation[(x + 1, y)] - self.elevation[(x - 1, y)];
-        let bt = self.elevation[(x, y - 1)] - self.elevation[(x, y + 1)];
-
-        // TODO: Average with the normal using the diagonal neighbors too?
-
-        na::Vector3::new(rl * scale, bt * scale, -2.0).normalize()
+    pub fn get_normal(&self, x: u32, y: u32) -> na::Vector3<f64> {
+        self.elevation.get_normal(x, y)
     }
 }
 

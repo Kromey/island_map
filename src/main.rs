@@ -6,7 +6,7 @@ use nalgebra as na;
 mod map;
 use map::{Map, SEA_LEVEL};
 
-fn draw_map(map: &Map, i: u64) {
+fn draw_map(map: &Map, label: &str) {
     let mut img = image::ImageBuffer::new(map.size(), map.size());
 
     // let ocean = image::Rgb([70_u8, 107, 159]);
@@ -41,7 +41,7 @@ fn draw_map(map: &Map, i: u64) {
             // ])
 
             // Apply diffuse lighting to the terrain by finding the normal at this pixel
-            let normal = map.get_normal(x, y, 70.0);
+            let normal = map.get_normal(x, y);
             // The dot product of 2 unit vectors is the same as the cos of the angle between them
             // http://learnwebgl.brown37.net/09_lights/lights_diffuse.html
             let light = normal.dot(&sun).clamp(0.0, 1.0);
@@ -73,7 +73,7 @@ fn draw_map(map: &Map, i: u64) {
     //     img.put_pixel(*x, *y, sand);
     // }
 
-    img.save(format!("noise_map_{:02}.png", i + 1)).unwrap();
+    img.save(format!("noise_map_{}.png", label)).unwrap();
 }
 
 fn main() {
@@ -82,8 +82,19 @@ fn main() {
     for seed in 0..12 {
         println!("Generating island {}...", seed + 1);
 
-        let map = Map::new(seed, size);
+        let mut map = Map::new(seed, size);
+        draw_map(&map, &format!("{:02}a", seed + 1));
 
-        draw_map(&map, seed);
+        map.erode(50_000);
+        draw_map(&map, &format!("{:02}b", seed + 1));
+
+        map.erode(50_000);
+        draw_map(&map, &format!("{:02}c", seed + 1));
+
+        map.erode(50_000);
+        draw_map(&map, &format!("{:02}d", seed + 1));
+
+        map.erode(50_000);
+        draw_map(&map, &format!("{:02}e", seed + 1));
     }
 }

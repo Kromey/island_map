@@ -1,10 +1,13 @@
 use super::gradient::Gradient;
 use bracket_noise::prelude::*;
+use nalgebra as na;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
 use std::ops::{Index, IndexMut};
 
 pub type Height = f64;
+
+const HEIGHT_SCALE: f64 = 50.0;
 
 pub struct Elevation {
     elevation: Vec<Height>,
@@ -238,6 +241,29 @@ impl Elevation {
         (idx % self.size, idx / self.size)
     }
 
+    #[inline(always)]
+    pub fn size(&self) -> u32 {
+        self.size
+    }
+
+    pub fn get_normal(&self, x: u32, y: u32) -> na::Vector3<f64> {
+        // Assign a vertical unit vector to the ocean
+        if self[(x, y)] <= super::SEA_LEVEL {
+            return na::Vector3::new(0.0, 0.0, -1.0);
+        }
+
+        // Calculate normal for a height map using central differencing
+        // https://stackoverflow.com/questions/49640250/calculate-normals-from-heightmap
+        // Because we know our edges are ocean, and thus handled above, we don't need to guard for
+        // underflows or overflows when getting neighbors here
+        let rl = self[(x - 1, y)] - self[(x + 1, y)];
+        let bt = self[(x, y - 1)] - self[(x, y + 1)];
+
+        // TODO: Average with the normal using the diagonal neighbors too?
+
+        na::Vector3::new(rl * HEIGHT_SCALE, bt * HEIGHT_SCALE, -2.0).normalize()
+    }
+
     pub fn _iter(&self) -> impl Iterator<Item = &f64> {
         self.elevation.iter()
     }
@@ -259,8 +285,8 @@ impl Index<(u32, u32)> for Elevation {
     type Output = Height;
 
     fn index(&self, key: (u32, u32)) -> &Self::Output {
-        assert!(key.0 < self.size, "X coordinate is out of bounds!");
-        assert!(key.1 < self.size, "Y coordinate is out of bounds!");
+        assert!(key.0 < self.size, "X coordinate is out of bounds! {:?}", key);
+        assert!(key.1 < self.size, "Y coordinate is out of bounds! {:?}", key);
 
         &self[self.to_idx(key.0, key.1)]
     }
@@ -274,8 +300,8 @@ impl IndexMut<usize> for Elevation {
 
 impl IndexMut<(u32, u32)> for Elevation {
     fn index_mut(&mut self, key: (u32, u32)) -> &mut Self::Output {
-        assert!(key.0 < self.size, "X coordinate is out of bounds!");
-        assert!(key.1 < self.size, "Y coordinate is out of bounds!");
+        assert!(key.0 < self.size, "X coordinate is out of bounds! {:?}", key);
+        assert!(key.1 < self.size, "Y coordinate is out of bounds! {:?}", key);
 
         let idx = self.to_idx(key.0, key.1);
 
