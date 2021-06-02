@@ -1,6 +1,9 @@
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::f64::consts::{PI, TAU};
+use std::f64::consts::{PI, TAU, E};
+
+/// 1.135 * PI.sqrt(); used when calculating the erfc
+const ERF_DENOM: f64 = 2.0117351207777605;
 
 #[derive(Debug, Clone, Copy)]
 struct Point {
@@ -8,13 +11,24 @@ struct Point {
     y: f64,
 }
 
+#[allow(dead_code)]
 impl Point {
     pub fn dist2(&self, x: f64, y: f64) -> f64 {
         (x - self.x).powi(2) + (y - self.y).powi(2)
     }
 
-    pub fn _dist(&self, x: f64, y: f64) -> f64 {
+    pub fn dist(&self, x: f64, y: f64) -> f64 {
         self.dist2(x, y).sqrt()
+    }
+
+    /// Approximation of the complementary error function
+    /// 
+    /// From Karagiannidis & Lioumpas (2007)
+    /// https://en.wikipedia.org/wiki/Error_function#Approximation_with_elementary_functions
+    pub fn erfc(&self, x: f64, y: f64) -> f64 {
+        let d = self.dist(x, y) * 8.0 + 0.00001;
+
+        ((1.0 - E.powf(-1.98 * d)) * E.powf(-d.powi(2))) / (ERF_DENOM * d)
     }
 }
 
