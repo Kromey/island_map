@@ -7,7 +7,7 @@ use std::ops::{Index, IndexMut};
 
 pub type Height = f64;
 
-const HEIGHT_SCALE: f64 = 50.0;
+const HEIGHT_SCALE: f64 = 40.0;
 
 pub struct Elevation {
     elevation: Vec<Height>,
@@ -54,7 +54,7 @@ impl Elevation {
         // Compute sea level to ensure a water border
         let sea_level = {
             // Establish the width of our water border
-            let perimeter = 15;
+            let perimeter = 30;
             // Initialize sea level to a point we know will be within our border
             let mut sea_level = raw_height(0.0, 0.0);
 
@@ -101,8 +101,8 @@ impl Elevation {
             sea_level + 0.01
         };
 
-        // Find our max height so we can normalize our elevations
-        let mut max_height = 0.0;
+        // Set heightmap values
+        // TODO: Should be able to find sea level here by checking if we're within the perimeter
         for y in 0..size {
             // Pre-compute these values before entering the inner (x) loop
             let idx = elevation.to_idx(0, y);
@@ -112,18 +112,8 @@ impl Elevation {
                 let idx = idx + x as usize; // Add x to the pre-computed index
                 let x = f64::from(x) / scale;
 
-                let height = raw_height(x, y) - sea_level;
-                if height > max_height {
-                    max_height = height;
-                }
+                let height = raw_height(x, y);
                 elevation[idx] = height;
-            }
-        }
-
-        // Normalize above-sea heights to [0.0, 1.0]
-        for elev in elevation.elevation.iter_mut() {
-            if *elev > 0.0 {
-                *elev /= max_height;
             }
         }
 
@@ -142,8 +132,8 @@ impl Elevation {
 
                     ocean[idx] = true;
 
-                    if elevation[idx] > super::SEA_LEVEL {
-                        coast.push((x as u32, y as u32));
+                    if elevation[idx] > sea_level {
+                        coast.push((x, y));
                     } else {
                         active.push((x, y));
                     }
@@ -153,6 +143,53 @@ impl Elevation {
             coast.shrink_to_fit();
             coast
         };
+
+        // Perform a breadth-first search to rescale heights based on distance from the coast
+        // By using our ocean as the initial value for visited points we can restrict this to land
+        let mut visited = ocean.clone();
+        let mut frontier = elevation.coast.clone(); // Start at the coast
+        let mut next_frontier = Vec::with_capacity(frontier.len());
+        let mut max_elev = 0.0; // Find the max height for the second rescale pass
+        while !frontier.is_empty() {
+            while let Some((x, y)) = frontier.pop() {
+                for (x, y) in elevation.get_neighbors(x, y) {
+                    let idx = elevation.to_idx(x, y);
+                    if visited[idx] {
+                        continue;
+                    }
+                    visited[idx] = true;
+
+                    // Get the distance to the nearest coast point
+                    let d = {
+                        let d = elevation.coast.iter().fold(u32::MAX, |min, coast| {
+                            // Using distance squared here to avoid costly square root at this stage
+                            let d = (x - coast.0).pow(2) + (y - coast.1).pow(2);
+                            if d < min {
+                                d
+                            } else {
+                                min
+                            }
+                        });
+                        // Found the nearest distance squared, now we can square root it to get distance
+                        f64::from(d).sqrt()
+                    };
+
+                    elevation[idx] *= d.sqrt();
+                    if elevation[idx] > max_elev {
+                        max_elev = elevation[idx];
+                    }
+
+                    next_frontier.push((x, y));
+                }
+            }
+
+            std::mem::swap(&mut frontier, &mut next_frontier);
+        }
+        // Subtract sea level and re-scale all our heights
+        max_elev -= sea_level;
+        for elev in elevation.elevation.iter_mut() {
+            *elev = (*elev - sea_level) / max_elev;
+        }
 
         // Now we can find inland lakes and raise them up
         let mut lakes = Vec::new();
