@@ -6,6 +6,7 @@ use nalgebra as na;
 mod map;
 use map::{Map, SEA_LEVEL};
 
+#[allow(unused_variables)]
 fn draw_map(map: &Map, label: &str) {
     let mut img = image::ImageBuffer::new(map.size(), map.size());
 
@@ -25,12 +26,14 @@ fn draw_map(map: &Map, label: &str) {
         let height = map.get_elevation(x, y);
 
         let color = if height <= SEA_LEVEL {
-            let height = 1.0 + height / 3.0;
-            image::Rgb([
-                (70.0 * height) as u8,
-                (107.0 * height) as u8,
-                (159.0 * height) as u8,
-            ])
+            // let height = 1.0 + height / 3.0;
+            // image::Rgb([
+            //     (70.0 * height) as u8,
+            //     (107.0 * height) as u8,
+            //     (159.0 * height) as u8,
+            // ])
+
+            image::Rgb([0u8, 0, 0])
         } else {
             // let bands = 8.0;
             // let height = (height * bands).floor() / bands;
@@ -40,17 +43,23 @@ fn draw_map(map: &Map, label: &str) {
             //     95.0.lerp(255., height) as u8,
             // ])
 
-            // Apply diffuse lighting to the terrain by finding the normal at this pixel
-            let normal = map.get_normal(x, y);
-            // The dot product of 2 unit vectors is the same as the cos of the angle between them
-            // http://learnwebgl.brown37.net/09_lights/lights_diffuse.html
-            let light = normal.dot(&sun).clamp(0.0, 1.0);
-            // Each of the RGB components is multiplied by the dot product (acting as a percentage
-            // of the light hitting the surface)
+            // // Apply diffuse lighting to the terrain by finding the normal at this pixel
+            // let normal = map.get_normal(x, y);
+            // // The dot product of 2 unit vectors is the same as the cos of the angle between them
+            // // http://learnwebgl.brown37.net/09_lights/lights_diffuse.html
+            // let light = normal.dot(&sun).clamp(0.0, 1.0);
+            // // Each of the RGB components is multiplied by the dot product (acting as a percentage
+            // // of the light hitting the surface)
+            // image::Rgb([
+            //     (108.0 * light) as u8,
+            //     (152.0 * light) as u8,
+            //     (95.0 * light) as u8,
+            // ])
+
             image::Rgb([
-                (108.0 * light) as u8,
-                (152.0 * light) as u8,
-                (95.0 * light) as u8,
+                (255.0 * height) as u8,
+                (255.0 * height) as u8,
+                (255.0 * height) as u8,
             ])
         };
 
