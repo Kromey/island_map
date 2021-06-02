@@ -22,7 +22,7 @@ const FRICTION: f64 = 0.05;
 /// Evaporation rate
 const EVAP_RATE: f64 = 0.001;
 /// Rate of deposition of sediment
-const DEPOSITION_RATE: f64 = 0.04;
+const DEPOSITION_RATE: f64 = 0.1;
 
 #[derive(Debug)]
 struct Droplet {
@@ -100,14 +100,17 @@ pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u3
             drop.sediment += DT * DEPOSITION_RATE * c_diff;
             elevation[ipos] -= DT * drop.volume * DEPOSITION_RATE * c_diff;
 
-            // Evaporation
-            drop.volume *= 1.0 - DT * EVAP_RATE;
-
             // Remove our droplet if it reaches the ocean
             // This also saves having to do bounds checking on position
             if elevation[ipos] < SEA_LEVEL {
+                // Deposit all remaining sediment here
+                elevation[ipos] += DT * drop.volume * DEPOSITION_RATE * drop.sediment;
+
                 break;
             }
+
+            // Evaporation
+            drop.volume *= 1.0 - DT * EVAP_RATE;
         }
     }
 }
