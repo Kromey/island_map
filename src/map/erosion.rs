@@ -49,8 +49,54 @@ impl Droplet {
         )
     }
 
-    fn speed(&self) -> f64 {
-        self.velocity.magnitude()
+    fn descend(&mut self, elevation: &mut Elevation) {
+        while self.volume > MIN_VOLUME {
+            // Floor the position to find the "cell" the droplet is in
+            let ipos = self.ipos();
+
+            // Remove our droplet if it's reached the ocean
+            if elevation[ipos] < SEA_LEVEL {
+                // Deposit all remaining sediment here
+                elevation[ipos] += DT * self.volume * DEPOSITION_RATE * self.sediment;
+
+                break;
+            }
+
+            // Get the surface normal to accelerate our droplet
+            let normal = elevation.get_normal(ipos.0, ipos.1).xy();
+
+            // Newtonian Mechanics
+            // Accelerate the droplet; F=ma, therefore a=F/m; m=volume*density
+            let accel = DT * normal / (self.volume * DENSITY);
+            self.velocity += accel;
+            // Move the droplet
+            self.position += DT * self.velocity;
+            // Slow the droplet via friction
+            self.velocity *= 1.0 - DT * FRICTION;
+
+            // Kill our droplet if it goes out of bounds
+            if self.position.iter().any(|&x| x < 0.0 || x >= elevation.size() as f64) {
+                // No need to worry about sediment, it's off the map (and hopefully in the sea)
+                break;
+            }
+
+            // Sedimentation
+            // Concentration Equilibrium determines how much sediment a drop can hold
+            // Set it higher if drop is faster and moving downhill
+            let c_eq = {
+                let c_eq = self.volume * self.velocity.magnitude() * (elevation[ipos] - elevation[self.ipos()]);
+                c_eq.max(0.0)
+            };
+            // Compute the driving force (capacity difference)
+            let c_diff = c_eq - self.sediment;
+            // Now perform the mass transfer
+            self.sediment += DT * DEPOSITION_RATE * c_diff;
+            elevation[ipos] -= DT * self.volume * DEPOSITION_RATE * c_diff;
+
+            // Evaporation
+            self.volume *= 1.0 - DT * EVAP_RATE;
+            self.sediment /= 1.0 - DT * EVAP_RATE; // Conserve sediment mass
+        }
     }
 }
 
@@ -68,53 +114,6 @@ pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u3
             }
         };
         let mut drop = Droplet::new(pos);
-
-        while drop.volume > MIN_VOLUME {
-            // Floor the position to find the "cell" the droplet is in
-            let ipos = drop.ipos();
-
-            // Remove our droplet if it's reached the ocean
-            if elevation[ipos] < SEA_LEVEL {
-                // Deposit all remaining sediment here
-                elevation[ipos] += DT * drop.volume * DEPOSITION_RATE * drop.sediment;
-
-                break;
-            }
-
-            // Get the surface normal to accelerate our droplet
-            let normal = elevation.get_normal(ipos.0, ipos.1).xy();
-
-            // Newtonian Mechanics
-            // Accelerate the droplet; F=ma, therefore a=F/m; m=volume*density
-            let accel = DT * normal / (drop.volume * DENSITY);
-            drop.velocity += accel;
-            // Move the droplet
-            drop.position += DT * drop.velocity;
-            // Slow the droplet via friction
-            drop.velocity *= 1.0 - DT * FRICTION;
-
-            // Kill our droplet if it goes out of bounds
-            if drop.position.iter().any(|&x| x < 0.0 || x >= elevation.size() as f64) {
-                // No need to worry about sediment, it's off the map (and hopefully in the sea)
-                break;
-            }
-
-            // Sedimentation
-            // Concentration Equilibrium determines how much sediment a drop can hold
-            // Set it higher if drop is faster and moving downhill
-            let c_eq = {
-                let c_eq = drop.volume * drop.speed() * (elevation[ipos] - elevation[drop.ipos()]);
-                c_eq.max(0.0)
-            };
-            // Compute the driving force (capacity difference)
-            let c_diff = c_eq - drop.sediment;
-            // Now perform the mass transfer
-            drop.sediment += DT * DEPOSITION_RATE * c_diff;
-            elevation[ipos] -= DT * drop.volume * DEPOSITION_RATE * c_diff;
-
-            // Evaporation
-            drop.volume *= 1.0 - DT * EVAP_RATE;
-            drop.sediment /= 1.0 - DT * EVAP_RATE; // Conserve sediment mass
-        }
+        drop.descend(elevation);
     }
 }
