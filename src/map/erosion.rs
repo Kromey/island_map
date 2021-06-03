@@ -1,11 +1,11 @@
 //! Simulate hydraulic erosion
-//! 
+//!
 //! This is based on the method described at
 //! https://nickmcd.me/2020/04/10/simple-particle-based-hydraulic-erosion/
 
 use super::{elevation::Elevation, SEA_LEVEL};
 use nalgebra as na;
-use rand::{prelude::*, distributions::Uniform};
+use rand::{distributions::Uniform, prelude::*};
 use rand_xoshiro::Xoshiro256StarStar;
 
 type Vec2 = na::Vector2<f64>;
@@ -43,10 +43,7 @@ impl Droplet {
     }
 
     fn ipos(&self) -> (u32, u32) {
-        (
-            self.position[0] as u32,
-            self.position[1] as u32,
-        )
+        (self.position[0] as u32, self.position[1] as u32)
     }
 
     fn descend(&mut self, elevation: &mut Elevation) {
@@ -75,7 +72,11 @@ impl Droplet {
             self.velocity *= 1.0 - DT * FRICTION;
 
             // Kill our droplet if it goes out of bounds
-            if self.position.iter().any(|&x| x < 0.0 || x >= elevation.size() as f64) {
+            if self
+                .position
+                .iter()
+                .any(|&x| x < 0.0 || x >= elevation.size() as f64)
+            {
                 // No need to worry about sediment, it's off the map (and hopefully in the sea)
                 break;
             }
@@ -84,7 +85,9 @@ impl Droplet {
             // Concentration Equilibrium determines how much sediment a drop can hold
             // Set it higher if drop is faster and moving downhill
             let c_eq = {
-                let c_eq = self.volume * self.velocity.magnitude() * (elevation[ipos] - elevation[self.ipos()]);
+                let c_eq = self.volume
+                    * self.velocity.magnitude()
+                    * (elevation[ipos] - elevation[self.ipos()]);
                 c_eq.max(0.0)
             };
             // Compute the driving force (capacity difference)
@@ -108,7 +111,7 @@ pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u3
         let pos = loop {
             let x = range.sample(rng);
             let y = range.sample(rng);
-    
+
             if elevation[(x, y)] > SEA_LEVEL {
                 break Vec2::new(x as f64, y as f64);
             }

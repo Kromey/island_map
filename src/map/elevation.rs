@@ -322,8 +322,16 @@ impl Index<(u32, u32)> for Elevation {
     type Output = Height;
 
     fn index(&self, key: (u32, u32)) -> &Self::Output {
-        assert!(key.0 < self.size, "X coordinate is out of bounds! {:?}", key);
-        assert!(key.1 < self.size, "Y coordinate is out of bounds! {:?}", key);
+        assert!(
+            key.0 < self.size,
+            "X coordinate is out of bounds! {:?}",
+            key
+        );
+        assert!(
+            key.1 < self.size,
+            "Y coordinate is out of bounds! {:?}",
+            key
+        );
 
         &self[self.to_idx(key.0, key.1)]
     }
@@ -337,8 +345,16 @@ impl IndexMut<usize> for Elevation {
 
 impl IndexMut<(u32, u32)> for Elevation {
     fn index_mut(&mut self, key: (u32, u32)) -> &mut Self::Output {
-        assert!(key.0 < self.size, "X coordinate is out of bounds! {:?}", key);
-        assert!(key.1 < self.size, "Y coordinate is out of bounds! {:?}", key);
+        assert!(
+            key.0 < self.size,
+            "X coordinate is out of bounds! {:?}",
+            key
+        );
+        assert!(
+            key.1 < self.size,
+            "Y coordinate is out of bounds! {:?}",
+            key
+        );
 
         let idx = self.to_idx(key.0, key.1);
 
