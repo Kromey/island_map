@@ -55,7 +55,6 @@ impl Droplet {
 }
 
 pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u32) {
-    let bounds = 0.0..(elevation.size() as f64);
     let range = Uniform::new(0, elevation.size());
 
     for _ in 0..cycles {
@@ -95,7 +94,7 @@ pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u3
             drop.velocity *= 1.0 - DT * FRICTION;
 
             // Kill our droplet if it goes out of bounds
-            if !bounds.contains(&drop.position[0]) || !bounds.contains(&drop.position[1]) {
+            if drop.position.iter().any(|&x| x < 0.0 || x >= elevation.size() as f64) {
                 // No need to worry about sediment, it's off the map (and hopefully in the sea)
                 break;
             }
