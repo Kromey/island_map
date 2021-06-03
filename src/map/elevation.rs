@@ -102,7 +102,7 @@ impl Elevation {
         };
 
         // Set heightmap values
-        // TODO: Should be able to find sea level here by checking if we're within the perimeter
+        // TODO: #2 Should be able to find sea level here by checking if we're within the perimeter
         for y in 0..size {
             // Pre-compute these values before entering the inner (x) loop
             let idx = elevation.to_idx(0, y);
@@ -296,7 +296,7 @@ impl Elevation {
         let rl = self[(x - 1, y)] - self[(x + 1, y)];
         let bt = self[(x, y - 1)] - self[(x, y + 1)];
 
-        // TODO: Average with the normal using the diagonal neighbors too?
+        // TODO: #1 Average with the normal using the diagonal neighbors too?
 
         na::Vector3::new(rl * HEIGHT_SCALE, bt * HEIGHT_SCALE, -2.0).normalize()
     }
