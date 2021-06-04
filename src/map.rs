@@ -5,8 +5,7 @@ use rand_xoshiro::Xoshiro256StarStar;
 mod elevation;
 mod erosion;
 mod gradient;
-//mod watershed;
-use elevation::Elevation;
+use elevation::{Elevation, Terrain};
 
 pub const SEA_LEVEL: f64 = 0.0;
 
@@ -61,8 +60,8 @@ impl Map {
     }
 
     #[inline(always)]
-    pub fn get_elevation(&self, x: u32, y: u32) -> f64 {
-        self.elevation[(x, y)]
+    pub fn get_elevation(&self, x: u32, y: u32) -> &Terrain {
+        &self.elevation[(x, y)]
     }
 
     #[allow(dead_code)]

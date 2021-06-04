@@ -46,7 +46,7 @@ impl Droplet {
         (self.position[0] as u32, self.position[1] as u32)
     }
 
-    fn descend(&mut self, elevation: &mut Elevation, stream: &mut [f64], pool: &mut [f64]) {
+    fn descend(&mut self, elevation: &mut Elevation) {
         while self.volume > MIN_VOLUME {
             // Floor the position to find the "cell" the droplet is in
             let ipos = self.ipos();
@@ -55,7 +55,7 @@ impl Droplet {
             // Remove our droplet if it's reached the ocean
             if elevation[idx] < SEA_LEVEL {
                 // Deposit all remaining sediment here
-                elevation[idx] += DT * self.volume * DEPOSITION_RATE * self.sediment;
+                elevation[idx].add_ground(DT * self.volume * DEPOSITION_RATE * self.sediment);
                 // Empty our volume so we don't try to flood here
                 self.volume = 0.0;
 
@@ -90,12 +90,12 @@ impl Droplet {
             let nidx = elevation.to_idx(nipos.0, nipos.1);
 
             // Surrounded by other droplets and not being accelerated
-            if stream[nidx] > 0.3 && accel.magnitude() < 0.01 {
+            if elevation[nidx].stream() > 0.3 && accel.magnitude() < 0.01 {
                 break;
             }
 
             // Entered a pool
-            if pool[nidx] > 0.0 {
+            if elevation[nidx].pool() > 0.0 {
                 break;
             }
 
@@ -105,14 +105,14 @@ impl Droplet {
             let c_eq = {
                 let c_eq = self.volume
                     * self.velocity.magnitude()
-                    * (elevation[idx] - elevation[nidx]);
+                    * (elevation[idx].ground() - elevation[nidx].ground());
                 c_eq.max(0.0)
             };
             // Compute the driving force (capacity difference)
             let c_diff = c_eq - self.sediment;
             // Now perform the mass transfer
             self.sediment += DT * DEPOSITION_RATE * c_diff;
-            elevation[idx] -= DT * self.volume * DEPOSITION_RATE * c_diff;
+            elevation[idx].remove_ground(DT * self.volume * DEPOSITION_RATE * c_diff);
 
             // Evaporation
             self.volume *= 1.0 - DT * EVAP_RATE;
@@ -123,8 +123,6 @@ impl Droplet {
 
 pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u32) {
     let range = Uniform::new(0, elevation.size());
-    let mut stream = vec![0.0; (elevation.size() * elevation.size()) as usize];
-    let mut pool = vec![0.0; (elevation.size() * elevation.size()) as usize];
 
     for _ in 0..cycles {
         // Find a position over our island to drop the Droplet
@@ -137,6 +135,6 @@ pub fn erode(elevation: &mut Elevation, rng: &mut Xoshiro256StarStar, cycles: u3
             }
         };
         let mut drop = Droplet::new(pos);
-        drop.descend(elevation, &mut stream, &mut pool);
+        drop.descend(elevation);
     }
 }

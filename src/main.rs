@@ -25,8 +25,8 @@ fn draw_map(map: &Map, label: &str) {
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let height = map.get_elevation(x, y);
 
-        let color = if height <= SEA_LEVEL {
-            let height = 1.0 + height / 3.0;
+        let color = if height.surface() <= SEA_LEVEL {
+            let height = 1.0 + height.surface() / 3.0;
             image::Rgb([
                 (70.0 * height) as u8,
                 (107.0 * height) as u8,

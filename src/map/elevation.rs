@@ -3,14 +3,101 @@ use bracket_noise::prelude::*;
 use nalgebra as na;
 use rand::prelude::*;
 use rand_xoshiro::Xoshiro256StarStar;
-use std::ops::{Index, IndexMut};
-
-pub type Height = f64;
+use std::{cmp::Ordering, ops::{Index, IndexMut}};
 
 const HEIGHT_SCALE: f64 = 40.0;
 
+#[derive(Debug)]
+pub enum SurfaceType {
+    Ocean,
+    Ground,
+    Stream,
+    Pool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub struct Terrain {
+    ground: f64,
+    stream: f64,
+    pool: f64,
+}
+
+impl Terrain {
+    pub fn ground(&self) -> f64 {
+        self.ground
+    }
+
+    pub fn add_ground(&mut self, added: f64) {
+        self.ground += added;
+    }
+
+    pub fn remove_ground(&mut self, removed: f64) {
+        self.ground -= removed;
+    }
+
+    pub fn stream(&self) -> f64 {
+        self.stream
+    }
+
+    pub fn pool(&self) -> f64 {
+        self.pool
+    }
+
+    pub fn surface(&self) -> f64 {
+        // Streams actually follow the ground rather than adding to the surface level, but pools
+        // DO add to the elevation
+        self.ground + self.pool
+    }
+
+    pub fn surface_type(&self) -> SurfaceType {
+        if self.surface() < super::SEA_LEVEL {
+            SurfaceType::Ocean
+        } else if self.pool > 0.0 {
+            SurfaceType::Pool
+        } else if self.stream > 0.0 {
+            SurfaceType::Stream
+        } else {
+            SurfaceType::Ground
+        }
+    }
+}
+
+impl Default for Terrain {
+    fn default() -> Self {
+        Terrain {
+            ground: 0.0,
+            stream: 0.0,
+            pool: 0.0,
+        }
+    }
+}
+
+impl PartialEq<f64> for Terrain {
+    fn eq(&self, other: &f64) -> bool {
+        self.surface() == *other
+    }
+}
+
+impl PartialOrd<f64> for Terrain {
+    fn partial_cmp(&self, other: &f64) -> Option<Ordering> {
+        self.surface().partial_cmp(other)
+    }
+}
+
+impl PartialEq<Terrain> for f64 {
+    fn eq(&self, other: &Terrain) -> bool {
+        self == &other.surface()
+    }
+}
+
+impl PartialOrd<Terrain> for f64 {
+    fn partial_cmp(&self, other: &Terrain) -> Option<Ordering> {
+        self.partial_cmp(&other.surface())
+    }
+}
+
 pub struct Elevation {
-    elevation: Vec<Height>,
+    elevation: Vec<Terrain>,
     coast: Vec<(u32, u32)>,
     size: u32,
 }
@@ -43,7 +130,7 @@ impl Elevation {
         };
 
         let mut elevation = Elevation {
-            elevation: vec![0.0; (size * size) as usize],
+            elevation: vec![Default::default(); (size * size) as usize],
             coast: Vec::new(),
             size,
         };
@@ -112,7 +199,7 @@ impl Elevation {
                 let x = f64::from(x) / scale;
 
                 let height = raw_height(x, y);
-                elevation[idx] = height;
+                elevation[idx].ground = height;
             }
         }
 
@@ -173,9 +260,9 @@ impl Elevation {
                         f64::from(d).sqrt()
                     };
 
-                    elevation[idx] *= d.sqrt();
+                    elevation[idx].ground *= d.sqrt();
                     if elevation[idx] > max_elev {
-                        max_elev = elevation[idx];
+                        max_elev = elevation[idx].ground;
                     }
 
                     next_frontier.push((x, y));
@@ -188,9 +275,9 @@ impl Elevation {
         max_elev -= sea_level;
         for elev in elevation.iter_mut() {
             //Makes for better under-sea terrain if we only scale above-sea heights
-            *elev -= sea_level;
+            elev.ground -= sea_level;
             if *elev > super::SEA_LEVEL {
-                *elev /= max_elev;
+                elev.ground /= max_elev;
             }
         }
 
@@ -228,7 +315,7 @@ impl Elevation {
                     if elev > super::SEA_LEVEL {
                         // Found a new shore point, check if it's lower
                         if elev < shore {
-                            shore = elev;
+                            shore = elev.ground;
                         }
                     } else {
                         // Add this point to our lake
@@ -245,7 +332,7 @@ impl Elevation {
         // Now that we've found our lakes, pull them up to the height of their lowest shore point
         for (shore, lake) in lakes {
             for idx in lake {
-                elevation[idx] = shore;
+                elevation[idx].ground = shore;
             }
         }
 
@@ -296,8 +383,8 @@ impl Elevation {
         // https://stackoverflow.com/questions/49640250/calculate-normals-from-heightmap
         // Because we know our edges are ocean, and thus handled above, we don't need to guard for
         // underflows or overflows when getting neighbors here
-        let rl = self[(x - 1, y)] - self[(x + 1, y)];
-        let bt = self[(x, y - 1)] - self[(x, y + 1)];
+        let rl = self[(x - 1, y)].surface() - self[(x + 1, y)].surface();
+        let bt = self[(x, y - 1)].surface() - self[(x, y + 1)].surface();
 
         // TODO: #1 Average with the normal using the diagonal neighbors too?
 
@@ -308,11 +395,11 @@ impl Elevation {
         self.elevation.len()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &f64> {
+    pub fn iter(&self) -> impl Iterator<Item = &Terrain> {
         self.elevation.iter()
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut f64> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Terrain> {
         self.elevation.iter_mut()
     }
 
@@ -322,7 +409,7 @@ impl Elevation {
 }
 
 impl Index<usize> for Elevation {
-    type Output = Height;
+    type Output = Terrain;
 
     fn index(&self, idx: usize) -> &Self::Output {
         &self.elevation[idx]
@@ -330,7 +417,7 @@ impl Index<usize> for Elevation {
 }
 
 impl Index<(u32, u32)> for Elevation {
-    type Output = Height;
+    type Output = Terrain;
 
     fn index(&self, key: (u32, u32)) -> &Self::Output {
         assert!(
