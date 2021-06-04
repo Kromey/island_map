@@ -102,7 +102,6 @@ impl Elevation {
         };
 
         // Set heightmap values
-        // TODO: #2 Should be able to find sea level here by checking if we're within the perimeter
         for y in 0..size {
             // Pre-compute these values before entering the inner (x) loop
             let idx = elevation.to_idx(0, y);
