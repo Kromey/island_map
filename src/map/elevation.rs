@@ -117,7 +117,7 @@ impl Elevation {
         }
 
         // Find the coast
-        let mut ocean = vec![false; elevation.elevation.len()];
+        let mut ocean = vec![false; elevation.len()];
         elevation.coast = {
             let mut coast = Vec::with_capacity((size * size / 4) as usize);
             let mut active = vec![(0, 0)];
@@ -186,14 +186,14 @@ impl Elevation {
         }
         // Subtract sea level and re-scale all our heights
         max_elev -= sea_level;
-        for elev in elevation.elevation.iter_mut() {
+        for elev in elevation.iter_mut() {
             *elev = (*elev - sea_level) / max_elev;
         }
 
         // Now we can find inland lakes and raise them up
         let mut lakes = Vec::new();
         let mut visited = vec![false; ocean.len()];
-        for (idx, (elev, is_ocean)) in elevation.elevation.iter().zip(ocean).enumerate() {
+        for (idx, (elev, is_ocean)) in elevation.iter().zip(ocean).enumerate() {
             // We only care about non-ocean points below sea level
             if is_ocean || *elev > super::SEA_LEVEL {
                 continue;
@@ -300,8 +300,16 @@ impl Elevation {
         na::Vector3::new(rl * HEIGHT_SCALE, bt * HEIGHT_SCALE, -2.0).normalize()
     }
 
-    pub fn _iter(&self) -> impl Iterator<Item = &f64> {
+    pub fn len(&self) -> usize {
+        self.elevation.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &f64> {
         self.elevation.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut f64> {
+        self.elevation.iter_mut()
     }
 
     pub fn get_coast<'a>(&'a self) -> &'a Vec<(u32, u32)> {
