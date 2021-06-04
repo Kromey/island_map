@@ -187,7 +187,11 @@ impl Elevation {
         // Subtract sea level and re-scale all our heights
         max_elev -= sea_level;
         for elev in elevation.iter_mut() {
-            *elev = (*elev - sea_level) / max_elev;
+            //Makes for better under-sea terrain if we only scale above-sea heights
+            *elev -= sea_level;
+            if *elev > super::SEA_LEVEL {
+                *elev /= max_elev;
+            }
         }
 
         // Now we can find inland lakes and raise them up
