@@ -52,16 +52,6 @@ impl Droplet {
             let ipos = self.ipos();
             let idx = elevation.to_idx(ipos.0, ipos.1);
 
-            // Remove our droplet if it's reached the ocean
-            if elevation[idx] < SEA_LEVEL {
-                // Deposit all remaining sediment here
-                elevation[idx].add_ground(DT * self.volume * DEPOSITION_RATE * self.sediment);
-                // Empty our volume so we don't try to flood here
-                self.volume = 0.0;
-
-                break;
-            }
-
             // Get the surface normal to accelerate our droplet
             let normal = elevation.get_normal(ipos.0, ipos.1).xy();
 
@@ -96,6 +86,16 @@ impl Droplet {
 
             // Entered a pool
             if elevation[nidx].pool() > 0.0 {
+                break;
+            }
+
+            // Reached the ocean
+            if elevation[nidx] < SEA_LEVEL {
+                // Deposit all remaining sediment here
+                elevation[nidx].add_ground(DT * self.volume * DEPOSITION_RATE * self.sediment);
+                // Empty our volume so we don't try to flood here
+                self.volume = 0.0;
+
                 break;
             }
 
