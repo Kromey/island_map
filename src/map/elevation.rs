@@ -7,7 +7,7 @@ use std::{cmp::Ordering, ops::{Index, IndexMut}};
 
 const HEIGHT_SCALE: f64 = 40.0;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SurfaceType {
     Ocean,
     Ground,
@@ -39,8 +39,28 @@ impl Terrain {
         self.stream
     }
 
+    pub fn update_stream(&mut self, tracked: bool, rate: f64) {
+        self.stream *= 1.0 - rate;
+
+        if tracked {
+            self.stream += rate;
+        }
+    }
+
     pub fn pool(&self) -> f64 {
         self.pool
+    }
+
+    pub fn add_pool(&mut self, added: f64) {
+        self.pool += added;
+    }
+
+    pub fn remove_pool(&mut self, removed: f64) {
+        if removed >= self.pool {
+            self.pool = 0.0;
+        } else {
+            self.pool -= removed;
+        }
     }
 
     pub fn surface(&self) -> f64 {
